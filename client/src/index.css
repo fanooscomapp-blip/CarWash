@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-arabic: "IBM Plex Sans Arabic", "Inter", system-ui, sans-serif;
+
+  --color-navy-950: #071428;
+  --color-navy-900: #0b1f3a;
+  --color-navy-800: #112b4f;
+  --color-navy-700: #173863;
+  --color-navy-100: #e3eaf5;
+  --color-brand-600: #1f5eff;
+  --color-brand-500: #2f6fff;
+  --color-brand-50: #eef3ff;
+  --color-surface: #f5f7fa;
+}
+
+:root { color-scheme: light; }
+html, body, #root { height: 100%; }
+body { @apply bg-surface text-slate-800 antialiased font-sans; }
+html[dir="rtl"] body { font-family: var(--font-arabic); }
+
+/* Scrollbars */
+* { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
+
+@layer components {
+/* Shared component primitives */
+.card { @apply bg-white rounded-xl border border-slate-200 shadow-[0_1px_2px_rgba(16,24,40,0.04)]; }
+.btn, .btn-primary, .btn-accent, .btn-secondary, .btn-ghost, .btn-danger, .btn-success { @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap; }
+.btn-primary { @apply bg-navy-900 text-white hover:bg-navy-800 focus-visible:outline-2 focus-visible:outline-brand-500; }
+.btn-accent { @apply bg-brand-600 text-white hover:bg-brand-500; }
+.btn-secondary { @apply bg-white border border-slate-300 text-slate-700 hover:bg-slate-50; }
+.btn-ghost { @apply text-slate-600 hover:bg-slate-100; }
+.btn-danger { @apply bg-red-600 text-white hover:bg-red-700; }
+.btn-success { @apply bg-emerald-600 text-white hover:bg-emerald-700; }
+.btn-sm { @apply px-2.5 py-1.5 text-xs; }
+.input { @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 disabled:bg-slate-50; }
+.label { @apply block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1.5; }
+.table { @apply w-full text-sm; }
+.table th { @apply text-start text-xs font-semibold uppercase tracking-wide text-slate-500 bg-slate-50 px-4 py-3 border-b border-slate-200 whitespace-nowrap; }
+.table td { @apply px-4 py-3 border-b border-slate-100 align-middle; }
+.table tbody tr:hover { @apply bg-slate-50/70; }
+.chip { @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium; }
+.nav-item { @apply flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-300 hover:bg-white/10 hover:text-white transition-colors; }
+.nav-item.active { @apply bg-brand-600/90 text-white; }
+.kpi-value { @apply text-2xl font-semibold tracking-tight text-navy-900; }
+}
+
+@keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.fade-in { animation: fade-in 0.18s ease-out; }

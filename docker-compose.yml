@@ -1,0 +1,60 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-carwash}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-carwash_secret_change_me}
+      POSTGRES_DB: ${POSTGRES_DB:-carwash}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-carwash} -d ${POSTGRES_DB:-carwash}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      TZ: ${TZ:-Africa/Cairo}
+      DATABASE_URL: postgres://${POSTGRES_USER:-carwash}:${POSTGRES_PASSWORD:-carwash_secret_change_me}@db:5432/${POSTGRES_DB:-carwash}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (openssl rand -hex 32)}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-12h}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:4000}
+      SEED_DEMO: ${SEED_DEMO:-true}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@carwash.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin@12345}
+      UPLOADS_DIR: /app/server/uploads
+    volumes:
+      - uploads:/app/server/uploads
+    ports:
+      - "${APP_PORT:-4000}:4000"
+
+  # Nightly logical backup of the database (kept 14 days) into ./backups
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-carwash_secret_change_me}
+    volumes:
+      - ./backups:/backups
+    entrypoint: >
+      sh -c 'while true; do
+        pg_dump -h db -U ${POSTGRES_USER:-carwash} ${POSTGRES_DB:-carwash} | gzip > /backups/carwash-$$(date +%F-%H%M).sql.gz;
+        find /backups -name "*.sql.gz" -mtime +14 -delete;
+        sleep 86400; done'
+
+volumes:
+  db_data:
+  uploads:

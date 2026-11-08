@@ -1,0 +1,44 @@
+# Render Blueprint – deploys the whole app as one Docker web service.
+# Database: use a free Neon Postgres (Render's own free Postgres expires after 30 days) and paste its
+# connection string into DATABASE_URL. Files: use Cloudflare R2 (free 10 GB) via the S3_* variables,
+# because the free Render disk is ephemeral and would lose receipts/photos on every deploy.
+services:
+  - type: web
+    name: carwash
+    runtime: docker
+    plan: free            # change to "starter" ($7/mo) for always-on, no cold starts
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "4000"
+      - key: TZ
+        value: Africa/Cairo
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 12h
+      - key: SEED_DEMO
+        value: "true"      # set "false" before the first production start
+      - key: ADMIN_EMAIL
+        value: admin@carwash.local
+      - key: ADMIN_PASSWORD
+        sync: false        # you will be prompted for it in the Render dashboard
+      - key: DATABASE_URL
+        sync: false        # paste the Neon connection string (ends with ?sslmode=require)
+      - key: STORAGE_DRIVER
+        value: s3
+      - key: S3_ENDPOINT
+        sync: false        # https://<accountid>.r2.cloudflarestorage.com
+      - key: S3_BUCKET
+        value: carwash-files
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_REGION
+        value: auto
