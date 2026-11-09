@@ -77,7 +77,7 @@ export default function SettingsPage() {
         {s.sms.provider === 'smsmisr' && <>
           <Field label="Username"><Input dir="ltr" autoComplete="off" value={s.sms.username} onChange={(e) => upd('sms', { username: e.target.value })} /></Field>
           <Field label="Password / Token"><Input dir="ltr" type="password" autoComplete="new-password" value={s.sms.password} onChange={(e) => upd('sms', { password: e.target.value })} /></Field>
-          <Field label="Sender ID" hint={t('settings.senderHint')}><Input dir="ltr" value={s.sms.senderId} onChange={(e) => upd('sms', { senderId: e.target.value })} /></Field>
+          <Field label="Sender ID" hint={t('settings.senderHint')} ><Input dir="ltr" value={s.sms.senderId} onChange={(e) => upd('sms', { senderId: e.target.value })} /></Field>
           <Field label={t('settings.smsEnv')}><Select value={s.sms.environment} onChange={(e) => upd('sms', { environment: e.target.value })}><option value="live">Live</option><option value="test">Test</option></Select></Field>
         </>}
         {s.sms.provider === 'generic' && <>
