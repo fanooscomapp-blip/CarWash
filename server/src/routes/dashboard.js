@@ -26,6 +26,7 @@ router.get('/', requirePermission('dashboard.view'), wrap(async (req, res) => {
     (SELECT count(*) FROM subscriptions WHERE company_id=${cid} AND status='pending_payment' ${cf})::int AS pending_payment_subscriptions,
     (SELECT count(*) FROM subscription_renewals r JOIN subscriptions s ON s.id = r.new_subscription_id WHERE r.company_id=${cid} AND r.status='pending' ${compoundId ? sql`AND s.compound_id = ${compoundId}` : sql``})::int AS pending_renewals,
     (SELECT count(*) FROM payments WHERE company_id=${cid} AND status='pending_verification' ${cf})::int AS pending_payments,
+    (SELECT count(*) FROM registration_requests WHERE company_id=${cid} AND status='pending' ${cf})::int AS pending_registrations,
     (SELECT count(*) FROM washing_tasks WHERE company_id=${cid} AND scheduled_date=CURRENT_DATE ${cf})::int AS washes_today,
     (SELECT count(*) FROM washing_tasks WHERE company_id=${cid} AND scheduled_date=CURRENT_DATE AND status='completed' ${cf})::int AS washes_completed_today,
     (SELECT count(*) FROM washing_tasks WHERE company_id=${cid} AND status IN ('assigned','accepted','in_progress') ${cf})::int AS pending_wash_tasks,

@@ -4,6 +4,7 @@ import { useI18n } from '../lib/i18n.jsx';
 import { useDebounced } from '../lib/hooks.js';
 import { api } from '../lib/api.js';
 import { Spinner } from './ui.jsx';
+import BodyIcon from './BodyIcons.jsx';
 
 // Searchable brand picker (free text allowed)
 export function BrandPicker({ value, onChange, brands, placeholder }) {
@@ -85,3 +86,11 @@ export function ColorDot({ color }) {
 }
 // Translates a colour key; legacy free-text colours (e.g. "White" from old records) fall through unchanged
 export const colorName = (t, color) => { if (!color) return ''; const k = color.toLowerCase(); const v = t(`colors.${k}`); return v === `colors.${k}` ? color : v; };
+
+export function BodyTypePicker({ value, onChange, types, t }) {
+  return (
+    <div className="grid grid-cols-5 sm:grid-cols-10 gap-1.5">
+      {types.map((bt) => <button type="button" key={bt} onClick={() => onChange(bt)} title={t(`vehicles.types.${bt}`)} className={`flex flex-col items-center gap-0.5 rounded-lg border px-1 py-1.5 transition-colors ${value === bt ? 'bg-navy-900 text-white border-navy-900' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'}`}><BodyIcon type={bt} className="h-5 w-10" /><span className="text-[10px] font-medium leading-tight text-center">{t(`vehicles.types.${bt}`)}</span></button>)}
+    </div>
+  );
+}

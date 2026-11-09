@@ -6,7 +6,7 @@ import { useI18n } from '../lib/i18n.jsx';
 import { useAuth } from '../lib/auth.jsx';
 import { api } from '../lib/api.js';
 import { fmtDate, todayISO } from '../lib/format.js';
-import { BrandPicker, ColorPicker, GpsField, useGpsCapture, ColorDot, colorName } from '../components/VehiclePickers.jsx';
+import { BrandPicker, ColorPicker, GpsField, useGpsCapture, ColorDot, colorName, BodyTypePicker } from '../components/VehiclePickers.jsx';
 import { PageHeader, DataTable, SearchInput, Select, Modal, Field, Input, Textarea, Spinner, useToast, AsyncSelect, StatusBadge } from '../components/ui.jsx';
 
 export function VehicleForm({ open, onClose, initial, onSaved, defaultUnit }) {
@@ -38,7 +38,7 @@ export function VehicleForm({ open, onClose, initial, onSaved, defaultUnit }) {
         <Field label={t('vehicles.brand')}><BrandPicker value={form.brand} onChange={(v) => setForm({ ...form, brand: v })} brands={catalog.data?.brands || []} placeholder={t('register.brandPlaceholder')} /></Field>
         <Field label={t('vehicles.model')}><Input value={form.model} onChange={set('model')} placeholder="Corolla" /></Field>
         <Field label={t('register.bodyType')} className="sm:col-span-2">
-          <div className="flex flex-wrap gap-1.5">{(catalog.data?.bodyTypes || []).map((bt) => <button type="button" key={bt} onClick={() => setForm({ ...form, vehicleType: bt })} className={`rounded-lg px-2.5 py-1.5 text-xs font-medium border transition-colors ${form.vehicleType === bt ? 'bg-navy-900 text-white border-navy-900' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'}`}>{t(`vehicles.types.${bt}`)}</button>)}</div>
+          <BodyTypePicker value={form.vehicleType} onChange={(bt) => setForm({ ...form, vehicleType: bt })} types={catalog.data?.bodyTypes || []} t={t} />
         </Field>
         <Field label={t('vehicles.color')} className="sm:col-span-2"><ColorPicker value={form.color} onChange={(v) => setForm({ ...form, color: v })} colors={catalog.data?.colors || []} t={t} /></Field>
         <Field label={t('vehicles.parking')}><Input value={form.parkingLocation} onChange={set('parkingLocation')} placeholder={t('register.parkingPlaceholder')} /></Field>

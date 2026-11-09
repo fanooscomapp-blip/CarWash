@@ -4,6 +4,7 @@ import { Check, Upload, Car, AlertTriangle, Clock, FileImage, LogIn } from 'luci
 import { papi, usePortal, fmtDate, fmtMoney, Badge } from './portalLib.jsx';
 import { PortalShell, Card, BigButton, Spinner, Center } from './PortalLayout.jsx';
 import PaymentBox from './PaymentBox.jsx';
+import BodyIcon from '../components/BodyIcons.jsx';
 
 export default function RenewPage() {
   const { token } = useParams(); const { t, lang } = usePortal();
@@ -35,7 +36,7 @@ export default function RenewPage() {
           <p className="text-xs text-slate-500">{t('renewFor')}</p>
           <div className="mt-1 flex items-start justify-between gap-3">
             <div><p className="text-xl font-bold text-navy-900" dir="ltr">{data.vehicles.map((v) => v.plateNumber).join(' · ')}</p><p className="text-sm text-slate-500">{data.vehicles.map((v) => `${v.brand || ''} ${v.model || ''}`.trim()).filter(Boolean).join(' · ')}</p><p className="text-xs text-slate-400 mt-1">{data.owner.name} · {t('unit')} {data.unitNumber} · {data.compound}</p></div>
-            <Car size={28} className="text-slate-300 shrink-0" />
+            <BodyIcon type={data.vehicles[0]?.vehicleType} className="h-9 w-[72px] text-slate-300 shrink-0" />
           </div>
           <div className="mt-3 rounded-xl bg-slate-50 p-3 text-sm flex items-center justify-between gap-2">
             <div><p className="text-xs text-slate-500">{t('currentPlan')}</p><p className="font-semibold">{pName(data.current)}</p><p className="text-xs text-slate-500">{t('expiresOn')} {fmtDate(data.current.endDate, lang)}{data.current.daysRemaining >= 0 ? ` · ${t('daysLeft', { n: data.current.daysRemaining })}` : ` · ${t('expiredAgo', { n: -data.current.daysRemaining })}`}</p></div>

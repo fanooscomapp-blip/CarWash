@@ -4,6 +4,7 @@ import { Car, Plus, Trash2, Check, Upload, FileImage, AlertTriangle, Clock, Sear
 import { papi, usePortal, fmtMoney, fmtDate } from './portalLib.jsx';
 import { PortalShell, Card, BigButton, Spinner, Center } from './PortalLayout.jsx';
 import PaymentBox from './PaymentBox.jsx';
+import BodyIcon from '../components/BodyIcons.jsx';
 
 const newVehicle = () => ({ key: Math.random().toString(36).slice(2), plateNumber: '', brand: '', model: '', color: 'white', vehicleType: 'sedan' });
 const colorName = (t, k) => ({ ar: { white: 'أبيض', black: 'أسود', silver: 'فضي', grey: 'رمادي', blue: 'أزرق', navy: 'كحلي', red: 'أحمر', maroon: 'عنابي', green: 'أخضر', beige: 'بيج', brown: 'بني', gold: 'ذهبي', orange: 'برتقالي', yellow: 'أصفر', purple: 'بنفسجي', other: 'أخرى' }, en: { white: 'White', black: 'Black', silver: 'Silver', grey: 'Grey', blue: 'Blue', navy: 'Navy', red: 'Red', maroon: 'Maroon', green: 'Green', beige: 'Beige', brown: 'Brown', gold: 'Gold', orange: 'Orange', yellow: 'Yellow', purple: 'Purple', other: 'Other' } })[t][k] || k;
@@ -71,7 +72,7 @@ export default function JoinPage() {
               <div><Lbl>{t('joinBrand')}</Lbl><Brand value={v.brand} onChange={(x) => upd(v.key, { brand: x })} brands={cfg.catalog.brands} placeholder={t('joinBrandSearch')} /></div>
               <label><Lbl>{t('joinModel')}</Lbl><input className={inp} value={v.model} placeholder="Corolla" onChange={(e) => upd(v.key, { model: e.target.value })} /></label>
             </div>
-            <div><Lbl>{t('joinBody')}</Lbl><div className="flex flex-wrap gap-1.5">{bodies.map((b) => <button type="button" key={b} onClick={() => upd(v.key, { vehicleType: b })} className={`rounded-lg px-3 py-2 text-sm border ${v.vehicleType === b ? 'bg-navy-900 text-white border-navy-900' : 'bg-white text-slate-700 border-slate-300'}`}>{B[b]}</button>)}</div></div>
+            <div><Lbl>{t('joinBody')}</Lbl><div className="grid grid-cols-4 gap-2">{bodies.map((b) => <button type="button" key={b} onClick={() => upd(v.key, { vehicleType: b })} className={`flex flex-col items-center gap-1 rounded-xl border px-1 py-2 ${v.vehicleType === b ? 'bg-navy-900 text-white border-navy-900' : 'bg-white text-slate-600 border-slate-300'}`}><BodyIcon type={b} className="h-6 w-12" /><span className="text-[11px] font-medium leading-tight text-center">{B[b]}</span></button>)}</div></div>
             <div><Lbl>{t('joinColor')} · {colorName(lang, v.color)}</Lbl><div className="flex flex-wrap gap-2">{colors.map((c) => <button type="button" key={c.key} onClick={() => upd(v.key, { color: c.key })} className={`h-9 w-9 rounded-full border ${v.color === c.key ? 'ring-2 ring-offset-2 ring-brand-600 border-transparent' : 'border-slate-300'}`} style={{ background: c.hex }}>{v.color === c.key && <Check size={16} className={`mx-auto ${['white', 'beige', 'yellow', 'silver'].includes(c.key) ? 'text-slate-800' : 'text-white'}`} />}</button>)}</div></div>
           </Card>
         ))}

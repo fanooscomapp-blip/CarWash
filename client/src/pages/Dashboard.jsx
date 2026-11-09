@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Home, Car, FileText, Clock, AlertTriangle, RefreshCw, CreditCard, Droplets, CheckCircle2, ListTodo, Wallet, Hourglass } from 'lucide-react';
+import { Building2, Home, Car, UserPlus, FileText, Clock, AlertTriangle, RefreshCw, CreditCard, Droplets, CheckCircle2, ListTodo, Wallet, Hourglass } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { useQuery, useLookups } from '../lib/hooks.js';
 import { useI18n } from '../lib/i18n.jsx';
@@ -56,6 +56,7 @@ export default function Dashboard() {
             <KpiCard label={t('dashboard.expired')} value={fmtNum(k.expired_subscriptions, lang)} icon={AlertTriangle} tone="danger" onClick={() => navigate('/renewals?filter=expired')} />
             <KpiCard label={t('dashboard.pendingRenewals')} value={fmtNum(k.pending_renewals, lang)} icon={RefreshCw} tone="warning" onClick={() => navigate('/renewals?filter=pending')} />
             <KpiCard label={t('dashboard.pendingPayments')} value={fmtNum(k.pending_payments, lang)} icon={CreditCard} tone="warning" onClick={() => navigate('/payments?status=pending_verification')} />
+            <KpiCard label={t('dashboard.newRegistrations')} value={fmtNum(k.pending_registrations, lang)} icon={UserPlus} tone={k.pending_registrations ? 'warning' : 'default'} onClick={() => navigate('/registration-requests')} />
             <KpiCard label={t('dashboard.washesToday')} value={fmtNum(k.washes_today, lang)} icon={Droplets} tone="info" />
             <KpiCard label={t('dashboard.completedToday')} value={fmtNum(k.washes_completed_today, lang)} icon={CheckCircle2} tone="success" />
             <KpiCard label={t('dashboard.pendingTasks')} value={fmtNum(k.pending_wash_tasks, lang)} icon={ListTodo} />

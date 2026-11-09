@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Car, ChevronRight, RefreshCw, Clock, CalendarDays, MapPin, Receipt, ArrowLeft } from 'lucide-react';
 import { papi, usePortal, fmtDate, fmtMoney, Badge } from './portalLib.jsx';
 import { Card, BigButton, Spinner, Center } from './PortalLayout.jsx';
+import BodyIcon from '../components/BodyIcons.jsx';
 
 function useLoad(fn, deps) { const [s, setS] = useState({ data: null, err: null }); useEffect(() => { let a = true; setS({ data: null, err: null }); fn().then((d) => a && setS({ data: d, err: null })).catch((e) => a && setS({ data: null, err: e })); return () => { a = false; }; }, deps); return s; } // eslint-disable-line
 const pName = (x, lang) => (lang === 'ar' && (x?.planNameAr)) ? x.planNameAr : x?.planName;
@@ -13,7 +14,7 @@ export function VehicleCard({ v, onClick }) {
   return (
     <Card onClick={onClick} className="p-4">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0"><p className="text-lg font-bold text-navy-900" dir="ltr">{v.plateNumber}</p><p className="text-sm text-slate-500 truncate">{[v.brand, v.model].filter(Boolean).join(' ')}{v.color ? ` · ${v.color}` : ''}</p><p className="text-xs text-slate-400 mt-0.5">{t('unit')} {v.unitNumber} · {v.compoundName}</p></div>
+        <div className="min-w-0 flex items-start gap-3"><BodyIcon type={v.vehicleType} className="h-8 w-16 text-slate-400 shrink-0 mt-1" /><div className="min-w-0"><p className="text-lg font-bold text-navy-900" dir="ltr">{v.plateNumber}</p><p className="text-sm text-slate-500 truncate">{[v.brand, v.model].filter(Boolean).join(' ')}{v.color ? ` · ${v.color}` : ''}</p><p className="text-xs text-slate-400 mt-0.5">{t('unit')} {v.unitNumber} · {v.compoundName}</p></div></div>
         <Badge status={v.subscriptionStatus} label={!v.subscriptionId ? t('noSub') : undefined} />
       </div>
       {v.subscriptionId && (
@@ -63,7 +64,7 @@ export function VehicleDetailPage() {
   return (
     <div className="space-y-4">
       <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm text-slate-500"><ArrowLeft size={16} className="rtl:rotate-180" />{t('back')}</button>
-      <Card className="p-4"><div className="flex items-start justify-between"><div><p className="text-2xl font-bold text-navy-900" dir="ltr">{v.plateNumber}</p><p className="text-sm text-slate-500">{[v.brand, v.model, v.color].filter(Boolean).join(' · ')}</p><p className="text-xs text-slate-400 mt-1">{t('unit')} {v.unitNumber} · {v.compoundName}</p>{v.parkingLocation && <p className="text-xs text-slate-500 mt-1 flex items-center gap-1"><MapPin size={12} />{v.parkingLocation}</p>}</div><Car size={32} className="text-slate-300" /></div></Card>
+      <Card className="p-4"><div className="flex items-start justify-between"><div><p className="text-2xl font-bold text-navy-900" dir="ltr">{v.plateNumber}</p><p className="text-sm text-slate-500">{[v.brand, v.model, v.color].filter(Boolean).join(' · ')}</p><p className="text-xs text-slate-400 mt-1">{t('unit')} {v.unitNumber} · {v.compoundName}</p>{v.parkingLocation && <p className="text-xs text-slate-500 mt-1 flex items-center gap-1"><MapPin size={12} />{v.parkingLocation}</p>}</div><BodyIcon type={v.vehicleType} className="h-10 w-20 text-slate-300" /></div></Card>
       {c ? (
         <Card className="p-4 space-y-3">
           <div className="flex items-center justify-between"><p className="font-semibold text-slate-800">{pName(c, lang)}</p><Badge status={c.status} /></div>

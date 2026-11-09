@@ -6,7 +6,7 @@ import { useAuth } from '../lib/auth.jsx';
 import { useQuery, useLookups, useDebounced } from '../lib/hooks.js';
 import { api } from '../lib/api.js';
 import { PageHeader, Field, Input, Spinner, useToast, StatusBadge } from '../components/ui.jsx';
-import { BrandPicker, UnitInput, ColorPicker, GpsField } from '../components/VehiclePickers.jsx';
+import { BrandPicker, UnitInput, ColorPicker, GpsField, BodyTypePicker } from '../components/VehiclePickers.jsx';
 
 const newRow = (unitNumber = '') => ({ key: Math.random().toString(36).slice(2), unitNumber, plateNumber: '', brand: '', model: '', color: 'white', vehicleType: 'sedan', parkingLocation: '', gpsLat: null, gpsLng: null, gpsBusy: false });
 
@@ -95,8 +95,8 @@ export default function Register() {
                   <Field label={t('vehicles.plate')} required><Input dir="ltr" className="uppercase font-semibold" value={r.plateNumber} onChange={(e) => upd(r.key, { plateNumber: e.target.value })} placeholder="ABC 1234" /></Field>
                   <Field label={t('vehicles.brand')}><BrandPicker value={r.brand} onChange={(v) => upd(r.key, { brand: v })} brands={catalog.data?.brands || []} placeholder={t('register.brandPlaceholder')} /></Field>
                   <Field label={t('vehicles.model')}><Input value={r.model} onChange={(e) => upd(r.key, { model: e.target.value })} placeholder="Corolla" /></Field>
-                  <Field label={t('register.bodyType')} className="lg:col-span-2">
-                    <div className="flex flex-wrap gap-1.5">{(catalog.data?.bodyTypes || []).map((bt) => <button type="button" key={bt} onClick={() => upd(r.key, { vehicleType: bt })} className={`rounded-lg px-2.5 py-1.5 text-xs font-medium border transition-colors ${r.vehicleType === bt ? 'bg-navy-900 text-white border-navy-900' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'}`}>{t(`vehicles.types.${bt}`)}</button>)}</div>
+                  <Field label={t('register.bodyType')} className="sm:col-span-2 lg:col-span-4">
+                    <BodyTypePicker value={r.vehicleType} onChange={(bt) => upd(r.key, { vehicleType: bt })} types={catalog.data?.bodyTypes || []} t={t} />
                   </Field>
                   <Field label={t('vehicles.color')} className="lg:col-span-2"><ColorPicker value={r.color} onChange={(v) => upd(r.key, { color: v })} colors={catalog.data?.colors || []} t={t} /></Field>
                   <Field label={<span className="flex items-center gap-1.5"><MapPin size={13} />{t('register.parking')}</span>} className="lg:col-span-3"><Input value={r.parkingLocation} onChange={(e) => upd(r.key, { parkingLocation: e.target.value })} placeholder={t('register.parkingPlaceholder')} /></Field>
