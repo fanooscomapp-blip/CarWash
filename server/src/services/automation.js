@@ -3,6 +3,7 @@ import { sql } from 'drizzle-orm';
 import { db, schema } from '../db/index.js';
 import { refreshStatuses } from './subscriptionService.js';
 import { systemAudit } from '../lib/audit.js';
+import { runReminderAutomation } from './renewalLinkService.js';
 
 // Nightly automation: recompute subscription statuses for every company and raise in-app notices for newly expiring/expired ones.
 // SMS reminders (Phase 4) hook into the same place: smsService.sendExpiryReminders(companyId).
@@ -19,6 +20,7 @@ export async function runDailyAutomation() {
       }
     }
     if (changed.length) await systemAudit(id, { action: 'automation.status_refresh', entityType: 'subscription', after: { changed: changed.length } });
+    await runReminderAutomation(id).catch((e) => console.error('reminder automation failed', e));
   }
 }
 

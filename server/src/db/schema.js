@@ -191,6 +191,8 @@ export const subscriptions = pgTable('subscriptions', {
   statusReason: text('status_reason'),
   notes: text('notes'),
   renewedFromId: uuid('renewed_from_id'),
+  renewalToken: varchar('renewal_token', { length: 80 }),            // secure link token for the owner's renewal page
+  renewalTokenExpiresAt: ts('renewal_token_expires_at'),
   createdBy: uuid('created_by').references(() => users.id),
   isDemo: boolean('is_demo').default(false).notNull(),
   createdAt: createdAt(),
@@ -200,7 +202,28 @@ export const subscriptions = pgTable('subscriptions', {
   index('subscriptions_status').on(t.companyId, t.status),
   index('subscriptions_end').on(t.companyId, t.endDate),
   index('subscriptions_renewed_from').on(t.renewedFromId),
+  uniqueIndex('subscriptions_renewal_token').on(t.renewalToken),
 ]);
+
+// One row per reminder actually sent, so the automation never sends the same reminder twice
+export const subscriptionReminders = pgTable('subscription_reminders', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  subscriptionId: uuid('subscription_id').references(() => subscriptions.id, { onDelete: 'cascade' }).notNull(),
+  kind: varchar('kind', { length: 30 }).notNull(), // before_3 | before_7 | on_expiry | after_3 | manual
+  smsLogId: uuid('sms_log_id'),
+  sentAt: createdAt(),
+}, (t) => [uniqueIndex('reminder_once').on(t.subscriptionId, t.kind)]);
+
+// Owner portal sessions (issued after OTP). Revocable, device-bound by token.
+export const ownerSessions = pgTable('owner_sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  ownerId: uuid('owner_id').references(() => owners.id, { onDelete: 'cascade' }).notNull(),
+  tokenHash: varchar('token_hash', { length: 128 }).notNull(),
+  expiresAt: ts('expires_at').notNull(),
+  lastSeenAt: ts('last_seen_at'),
+  userAgent: varchar('user_agent', { length: 300 }),
+  createdAt: createdAt(),
+}, (t) => [uniqueIndex('owner_sessions_token').on(t.tokenHash), index('owner_sessions_owner').on(t.ownerId)]);
 
 export const subscriptionVehicles = pgTable('subscription_vehicles', {
   subscriptionId: uuid('subscription_id').references(() => subscriptions.id, { onDelete: 'cascade' }).notNull(),
@@ -238,6 +261,7 @@ export const payments = pgTable('payments', {
   approvedAt: ts('approved_at'),
   rejectionReason: text('rejection_reason'),
   notes: text('notes'),
+  ownerNote: text('owner_note'),
   isDemo: boolean('is_demo').default(false).notNull(),
   createdAt: createdAt(),
   updatedAt: updatedAt(),

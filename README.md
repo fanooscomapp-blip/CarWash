@@ -1,4 +1,4 @@
-# Car Wash Management System — Phase 1
+# Car Wash Management System — Phases 1 & 2
 
 Multi-compound, subscription-based car wash platform. **Phase 1** delivers the database for the whole product, authentication & role-based access, and the complete Admin Portal for compounds, units, owners, vehicles, plans, subscriptions, renewals and payment approval.
 
@@ -57,9 +57,17 @@ Other scripts: `npm run generate` (new SQL migration after editing `src/db/schem
 
 The schema already contains **all 24 entities** from the specification (washing schedules/tasks/operations, before/after photos, SMS templates & logs, OTP codes, QR codes, staff compound assignments…), the permission catalogue includes the staff-portal permissions, SMS templates (EN/AR) are seeded, and the SMS/OTP/photo settings screens are in place. Nothing simulates external delivery: SMS status stays `not_configured` until a provider is configured.
 
+## Phase 2 — Owner portal (delivered)
+
+- **Renewal by secure link** (`/p/renew/<token>`): no login. Shows the vehicle, current plan, selectable plans with prices, the InstaPay number (copy button) and a receipt upload. Creates a pending renewal + payment; admin is notified; owner tracks status on the same page; rejection reason + re-upload.
+- **Automatic reminders**: configurable days before expiry (default 3) and on the expiry day if not renewed; each reminder is sent once (`subscription_reminders`), never to renewed subscriptions.
+- **SMS**: SMS Misr adapter (username/password/sender, live/test) + generic webhook adapter; templates EN/AR editable; delivery log with provider response; test-send button. Without a provider nothing is simulated — messages are logged `not_configured` and OTP codes can be read by the admin in the SMS log.
+- **OTP login** (for the full portal): rate-limited, hashed codes, expiry, max attempts, 30-day device sessions.
+- **Owner portal**: home, my vehicles (status, washes left, days left), vehicle detail (allowed days, next wash, history, payments, renew button), wash calendar with before/after photos, my requests.
+- **Admin**: Renewal requests view, SMS Center (logs/templates/bulk send), Settings → Payment (InstaPay), SMS, Owner portal, Notification rules; "Renewal link" + "Send renewal SMS" + WhatsApp share on subscription detail; manual wash record with photos (bridge until Phase 3).
+
 | Phase | Scope |
 |---|---|
-| 2 | Owner portal (OTP login, my vehicles, renewal request, receipt upload, tracking), admin approval notifications, SMS provider adapter |
 | 3 | Staff portal, task assignment & task pool, washing workflow with mandatory before/after photos, validation engine (quota, allowed days, duplicates), admin operations monitoring |
 | 4 | Scheduled SMS reminders, QR printing/scanning, reports & Excel/PDF export, staff performance |
 | 5 | Security review, responsive & workflow testing, performance tuning |

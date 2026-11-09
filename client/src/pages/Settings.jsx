@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Save, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Save, AlertTriangle, CheckCircle2, Send } from 'lucide-react';
 import { useQuery } from '../lib/hooks.js';
 import { useI18n } from '../lib/i18n.jsx';
 import { useAuth } from '../lib/auth.jsx';
@@ -23,6 +23,8 @@ export default function SettingsPage() {
   const { data, loading, error, reload } = useQuery('/admin/settings');
   const [s, setS] = useState(null); const [company, setCompanyForm] = useState(null); const [busy, setBusy] = useState({});
   const [pw, setPw] = useState({ currentPassword: '', newPassword: '' });
+  const [testMobile, setTestMobile] = useState(''); const [testBusy, setTestBusy] = useState(false); const [testResult, setTestResult] = useState(null);
+  const sendTest = async () => { setTestBusy(true); setTestResult(null); try { const { data: d } = await api.post('/admin/settings/sms/test', { mobile: testMobile }); setTestResult(d); } catch (e) { toast.error(e.message); } finally { setTestBusy(false); } };
   useEffect(() => { if (data) { setS(data.settings); setCompanyForm(data.company); } }, [data]);
   if (error) return <ErrorBox error={error} onRetry={reload} />;
   if (!s || !company) return <Loading />;
@@ -53,20 +55,48 @@ export default function SettingsPage() {
         <Field label={t('settings.defaultWashingDays')} className="sm:col-span-2"><DaysPicker value={s.general.defaultWashingDays} onChange={(v) => upd('general', { defaultWashingDays: v })} /></Field>
       </Section>
 
-      <Section title={t('settings.bank')} busy={busy.bank} onSave={() => save('bank', s.bank)}>
-        <Field label={t('settings.bankName')}><Input value={s.bank.bankName} onChange={(e) => upd('bank', { bankName: e.target.value })} /></Field>
-        <Field label={t('settings.accountName')}><Input value={s.bank.accountName} onChange={(e) => upd('bank', { accountName: e.target.value })} /></Field>
-        <Field label={t('settings.accountNumber')}><Input dir="ltr" value={s.bank.accountNumber} onChange={(e) => upd('bank', { accountNumber: e.target.value })} /></Field>
-        <Field label={t('settings.iban')}><Input dir="ltr" value={s.bank.iban} onChange={(e) => upd('bank', { iban: e.target.value })} /></Field>
-        <Field label={t('settings.instructions')} className="sm:col-span-2"><Textarea rows={3} value={s.bank.instructions} onChange={(e) => upd('bank', { instructions: e.target.value })} /></Field>
+      <Section title={t('settings.payment')} busy={busy.payment} onSave={() => save('payment', s.payment)}>
+        <Field label={t('settings.paymentMethod')}><Select value={s.payment.method} onChange={(e) => upd('payment', { method: e.target.value })}><option value="instapay">InstaPay</option><option value="bank">{t('settings.bankTransfer')}</option><option value="cash_only">{t('settings.cashOnly')}</option></Select></Field>
+        <div />
+        {s.payment.method === 'instapay' && <>
+          <Field label={t('settings.instapayAddress')} hint={t('settings.instapayHint')}><Input dir="ltr" value={s.payment.instapayAddress} onChange={(e) => upd('payment', { instapayAddress: e.target.value })} placeholder="01xxxxxxxxx / name@instapay" /></Field>
+          <Field label={t('settings.instapayName')}><Input value={s.payment.instapayName} onChange={(e) => upd('payment', { instapayName: e.target.value })} /></Field>
+        </>}
+        <Field label={t('settings.instructionsEn')}><Textarea rows={2} value={s.payment.instructions} onChange={(e) => upd('payment', { instructions: e.target.value })} /></Field>
+        <Field label={t('settings.instructionsAr')}><Textarea rows={2} dir="rtl" value={s.payment.instructionsAr} onChange={(e) => upd('payment', { instructionsAr: e.target.value })} /></Field>
+        {s.payment.method === 'bank' && <>
+          <Field label={t('settings.bankName')}><Input value={s.bank.bankName} onChange={(e) => upd('bank', { bankName: e.target.value })} onBlur={() => save('bank', s.bank)} /></Field>
+          <Field label={t('settings.accountNumber')}><Input dir="ltr" value={s.bank.accountNumber} onChange={(e) => upd('bank', { accountNumber: e.target.value })} onBlur={() => save('bank', s.bank)} /></Field>
+        </>}
       </Section>
 
-      <Section title={t('settings.sms')} busy={busy.sms} onSave={() => save('sms', { provider: s.sms.provider, apiUrl: s.sms.apiUrl, apiKey: s.sms.apiKey, senderId: s.sms.senderId }, (d) => upd('sms', d))}>
+      <Section title={t('settings.sms')} busy={busy.sms} onSave={() => save('sms', { provider: s.sms.provider, username: s.sms.username, password: s.sms.password, senderId: s.sms.senderId, environment: s.sms.environment, apiUrl: s.sms.apiUrl, apiKey: s.sms.apiKey, defaultLang: s.sms.defaultLang }, (d) => upd('sms', d))}>
         <div className={`sm:col-span-2 flex items-start gap-2 rounded-lg px-3 py-2 text-sm ${s.sms.configured ? 'bg-emerald-50 text-emerald-700' : 'bg-orange-50 text-orange-700'}`}>{s.sms.configured ? <CheckCircle2 size={16} className="mt-0.5" /> : <AlertTriangle size={16} className="mt-0.5" />}{s.sms.configured ? t('settings.smsConfigured') : t('settings.smsNotConfigured')}</div>
-        <Field label={t('settings.smsProvider')}><Input placeholder="e.g. Twilio, Vonage, local gateway" value={s.sms.provider === 'none' ? '' : s.sms.provider} onChange={(e) => upd('sms', { provider: e.target.value || 'none' })} /></Field>
-        <Field label={t('settings.smsSender')}><Input dir="ltr" value={s.sms.senderId} onChange={(e) => upd('sms', { senderId: e.target.value })} /></Field>
-        <Field label={t('settings.smsApiUrl')}><Input dir="ltr" value={s.sms.apiUrl} onChange={(e) => upd('sms', { apiUrl: e.target.value })} /></Field>
-        <Field label={t('settings.smsApiKey')}><Input dir="ltr" type="password" autoComplete="off" value={s.sms.apiKey} onChange={(e) => upd('sms', { apiKey: e.target.value })} /></Field>
+        <Field label={t('settings.smsProvider')}><Select value={s.sms.provider} onChange={(e) => upd('sms', { provider: e.target.value })}><option value="none">{t('common.none')}</option><option value="smsmisr">SMS Misr</option><option value="generic">{t('settings.smsGeneric')}</option></Select></Field>
+        <Field label={t('settings.smsLang')}><Select value={s.sms.defaultLang} onChange={(e) => upd('sms', { defaultLang: e.target.value })}><option value="ar">العربية</option><option value="en">English</option></Select></Field>
+        {s.sms.provider === 'smsmisr' && <>
+          <Field label="Username"><Input dir="ltr" autoComplete="off" value={s.sms.username} onChange={(e) => upd('sms', { username: e.target.value })} /></Field>
+          <Field label="Password / Token"><Input dir="ltr" type="password" autoComplete="new-password" value={s.sms.password} onChange={(e) => upd('sms', { password: e.target.value })} /></Field>
+          <Field label="Sender ID" hint={t('settings.senderHint')}><Input dir="ltr" value={s.sms.senderId} onChange={(e) => upd('sms', { senderId: e.target.value })} /></Field>
+          <Field label={t('settings.smsEnv')}><Select value={s.sms.environment} onChange={(e) => upd('sms', { environment: e.target.value })}><option value="live">Live</option><option value="test">Test</option></Select></Field>
+        </>}
+        {s.sms.provider === 'generic' && <>
+          <Field label={t('settings.smsApiUrl')}><Input dir="ltr" value={s.sms.apiUrl} onChange={(e) => upd('sms', { apiUrl: e.target.value })} /></Field>
+          <Field label={t('settings.smsApiKey')}><Input dir="ltr" type="password" autoComplete="off" value={s.sms.apiKey} onChange={(e) => upd('sms', { apiKey: e.target.value })} /></Field>
+          <Field label="Sender ID"><Input dir="ltr" value={s.sms.senderId} onChange={(e) => upd('sms', { senderId: e.target.value })} /></Field>
+        </>}
+        <div className="sm:col-span-2 flex flex-wrap items-end gap-2 rounded-lg border border-dashed border-slate-300 p-3">
+          <Field label={t('settings.smsTestTo')} className="flex-1 min-w-48"><Input dir="ltr" value={testMobile} onChange={(e) => setTestMobile(e.target.value)} placeholder="01xxxxxxxxx" /></Field>
+          <button type="button" className="btn-secondary" disabled={!testMobile || testBusy} onClick={sendTest}>{testBusy ? <Spinner /> : <Send size={14} />}{t('settings.smsTest')}</button>
+          {testResult && <p className={`basis-full text-sm ${testResult.status === 'sent' ? 'text-emerald-700' : 'text-red-600'}`}>{t(`sms.status_${testResult.status}`)}{testResult.providerResponse?.codeMeaning ? ` — ${testResult.providerResponse.codeMeaning}` : testResult.providerResponse?.error ? ` — ${testResult.providerResponse.error}` : testResult.providerResponse?.reason ? ` — ${testResult.providerResponse.reason}` : ''}</p>}
+        </div>
+        <p className="sm:col-span-2 text-xs text-slate-500">{t('settings.smsTestHint')}</p>
+      </Section>
+
+      <Section title={t('settings.portal')} busy={busy.portal} onSave={() => save('portal', s.portal)}>
+        <Field label={t('settings.portalBaseUrl')} hint={t('settings.portalBaseUrlHint')} className="sm:col-span-2"><Input dir="ltr" value={s.portal.baseUrl} onChange={(e) => upd('portal', { baseUrl: e.target.value })} placeholder={window.location.origin} /></Field>
+        <Field label={t('settings.linkValidDays')}><Input type="number" min="1" max="365" value={s.portal.linkValidDays} onChange={(e) => upd('portal', { linkValidDays: Number(e.target.value) })} /></Field>
+        <Field label={t('settings.sessionDays')}><Input type="number" min="1" max="365" value={s.portal.sessionDays} onChange={(e) => upd('portal', { sessionDays: Number(e.target.value) })} /></Field>
       </Section>
 
       <Section title={t('settings.otp')} busy={busy.otp} onSave={() => save('otp', s.otp)}>
@@ -83,9 +113,16 @@ export default function SettingsPage() {
       </Section>
 
       <Section title={t('settings.notifications')} busy={busy.notifications} onSave={() => save('notifications', s.notifications)}>
-        <Field label={t('settings.reminderDays')} hint={t('settings.commaHint')}><Input dir="ltr" defaultValue={numList(s.notifications.expiryReminderDays)} onBlur={(e) => upd('notifications', { expiryReminderDays: parseList(e.target.value) })} /></Field>
+        <Field label={t('settings.reminderDays')} hint={t('settings.reminderDaysHint')}><Input dir="ltr" defaultValue={numList(s.notifications.expiryReminderDays)} onBlur={(e) => upd('notifications', { expiryReminderDays: parseList(e.target.value) })} /></Field>
         <Field label={t('settings.postExpiry')} hint={t('settings.commaHint')}><Input dir="ltr" defaultValue={numList(s.notifications.postExpiryReminderDays)} onBlur={(e) => upd('notifications', { postExpiryReminderDays: parseList(e.target.value) })} /></Field>
-        <div className="sm:col-span-2 space-y-2"><Toggle checked={s.notifications.notifyAdminOnPendingPayment} onChange={(v) => upd('notifications', { notifyAdminOnPendingPayment: v })} label={t('settings.notifyPending')} /><br /><Toggle checked={s.notifications.notifyAdminOnIssue} onChange={(v) => upd('notifications', { notifyAdminOnIssue: v })} label={t('settings.notifyIssue')} /></div>
+        <div className="sm:col-span-2 grid sm:grid-cols-2 gap-2">
+          <Toggle checked={s.notifications.sendOnExpiry} onChange={(v) => upd('notifications', { sendOnExpiry: v })} label={t('settings.sendOnExpiry')} />
+          <Toggle checked={s.notifications.smsOnPaymentApproved} onChange={(v) => upd('notifications', { smsOnPaymentApproved: v })} label={t('settings.smsOnApproved')} />
+          <Toggle checked={s.notifications.smsOnPaymentRejected} onChange={(v) => upd('notifications', { smsOnPaymentRejected: v })} label={t('settings.smsOnRejected')} />
+          <Toggle checked={s.notifications.smsOnWashCompleted} onChange={(v) => upd('notifications', { smsOnWashCompleted: v })} label={t('settings.smsOnWash')} />
+          <Toggle checked={s.notifications.notifyAdminOnPendingPayment} onChange={(v) => upd('notifications', { notifyAdminOnPendingPayment: v })} label={t('settings.notifyPending')} />
+          <Toggle checked={s.notifications.notifyAdminOnIssue} onChange={(v) => upd('notifications', { notifyAdminOnIssue: v })} label={t('settings.notifyIssue')} />
+        </div>
       </Section>
 
       <form id="password" onSubmit={changePw} className="card p-5">

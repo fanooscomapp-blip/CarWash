@@ -15,6 +15,13 @@
       "when": 1794217307816,
       "tag": "0001_vehicle_parking_gps",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794220262804,
+      "tag": "0002_phase2_portal",
+      "breakpoints": true
     }
   ]
 }

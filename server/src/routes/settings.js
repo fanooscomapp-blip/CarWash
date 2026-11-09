@@ -1,12 +1,14 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { db, schema } from '../db/index.js';
 import { wrap, badRequest } from '../lib/errors.js';
 import { requirePermission } from '../middleware/auth.js';
 import { audit } from '../lib/audit.js';
 import { getAllSettings, getSetting, setSetting, maskSecrets, SETTING_DEFAULTS } from '../services/settingsService.js';
 import { compact } from '../lib/util.js';
+import { isConfigured, sendSms } from '../services/smsService.js';
+import { normalizeMobile } from '../lib/mobile.js';
 
 const router = Router();
 
@@ -32,12 +34,36 @@ router.put('/company', requirePermission('settings.manage'), wrap(async (req, re
 const sectionSchemas = {
   general: z.object({ expiringSoonDays: z.coerce.number().int().min(1).max(90), defaultWashingDays: z.array(z.number().int().min(0).max(6)).min(1), weekStartsOn: z.number().int().min(0).max(6) }),
   bank: z.object({ bankName: z.string().max(200), accountName: z.string().max(200), accountNumber: z.string().max(60), iban: z.string().max(60), instructions: z.string().max(2000) }),
-  sms: z.object({ provider: z.string().max(60), apiUrl: z.string().max(500), apiKey: z.string().max(500), senderId: z.string().max(60) }),
+  payment: z.object({ method: z.enum(['instapay', 'bank', 'cash_only']), instapayAddress: z.string().max(120), instapayName: z.string().max(120), instructions: z.string().max(1000), instructionsAr: z.string().max(1000) }),
+  sms: z.object({ provider: z.enum(['none', 'smsmisr', 'generic']), username: z.string().max(200).optional().default(''), password: z.string().max(200).optional().default(''), senderId: z.string().max(60).optional().default(''), environment: z.enum(['live', 'test']).optional().default('live'), apiUrl: z.string().max(500).optional().default(''), apiKey: z.string().max(500).optional().default(''), defaultLang: z.enum(['ar', 'en']).optional().default('ar') }),
+  portal: z.object({ baseUrl: z.string().max(300), sessionDays: z.coerce.number().int().min(1).max(365), linkValidDays: z.coerce.number().int().min(1).max(365) }),
   otp: z.object({ length: z.coerce.number().int().min(4).max(8), expiryMinutes: z.coerce.number().int().min(1).max(60), maxAttempts: z.coerce.number().int().min(1).max(20), resendCooldownSeconds: z.coerce.number().int().min(10).max(600) }),
   photos: z.object({ minBeforePhotos: z.coerce.number().int().min(1).max(10), minAfterPhotos: z.coerce.number().int().min(1).max(10), maxPhotoSizeMb: z.coerce.number().int().min(1).max(50) }),
-  notifications: z.object({ expiryReminderDays: z.array(z.number().int().min(0).max(60)), postExpiryReminderDays: z.array(z.number().int().min(1).max(60)), notifyAdminOnPendingPayment: z.boolean(), notifyAdminOnIssue: z.boolean() }),
+  notifications: z.object({ expiryReminderDays: z.array(z.number().int().min(1).max(60)), sendOnExpiry: z.boolean(), postExpiryReminderDays: z.array(z.number().int().min(1).max(60)), notifyAdminOnPendingPayment: z.boolean(), notifyAdminOnIssue: z.boolean(), smsOnPaymentApproved: z.boolean(), smsOnPaymentRejected: z.boolean(), smsOnWashCompleted: z.boolean() }),
   paymentMethods: z.array(z.string().min(1).max(40)).min(1),
 };
+
+// Send a real test message through the configured provider (nothing is simulated)
+router.post('/sms/test', requirePermission('settings.manage'), wrap(async (req, res) => {
+  const { mobile, message } = z.object({ mobile: z.string().min(6), message: z.string().max(300).optional() }).parse(req.body);
+  const log = await sendSms(req.companyId, { to: normalizeMobile(mobile), body: message || 'Car Wash Management – test message / رسالة تجريبية', lang: 'en' });
+  await audit(req, { action: 'settings.sms_test', entityType: 'settings', after: { to: log.toMobile, status: log.status } });
+  res.json(log);
+}));
+
+// ───── SMS templates ─────
+router.get('/sms-templates', requirePermission('sms.view', 'settings.manage'), wrap(async (req, res) => {
+  const rows = await db.select().from(schema.smsTemplates).where(eq(schema.smsTemplates.companyId, req.companyId)).orderBy(schema.smsTemplates.key, schema.smsTemplates.lang);
+  res.json({ templates: rows, placeholders: ['OwnerName', 'VehicleNumber', 'UnitNumber', 'CompoundName', 'ExpiryDate', 'RenewalLink', 'RenewalId', 'Reason', 'RemainingWashes', 'Code', 'Minutes', 'Amount', 'PlanName'] });
+}));
+router.put('/sms-templates/:id', requirePermission('sms.send', 'settings.manage'), wrap(async (req, res) => {
+  const body = z.object({ body: z.string().min(1).max(1000), isActive: z.boolean().optional() }).parse(req.body);
+  const before = await db.query.smsTemplates.findFirst({ where: and(eq(schema.smsTemplates.id, req.params.id), eq(schema.smsTemplates.companyId, req.companyId)) });
+  if (!before) throw badRequest('Template not found');
+  const [row] = await db.update(schema.smsTemplates).set({ ...compact(body), updatedAt: new Date() }).where(eq(schema.smsTemplates.id, before.id)).returning();
+  await audit(req, { action: 'sms.template_update', entityType: 'sms_template', entityId: row.id, before: { body: before.body }, after: { body: row.body } });
+  res.json(row);
+}));
 
 router.put('/:section', requirePermission('settings.manage'), wrap(async (req, res) => {
   const section = req.params.section;
@@ -46,13 +72,16 @@ router.put('/:section', requirePermission('settings.manage'), wrap(async (req, r
   let value = sch.parse(req.body);
   const before = await getSetting(req.companyId, section);
   if (section === 'sms') {
-    // Keep the stored key when the client sends back the masked placeholder
-    if (value.apiKey.startsWith('••••')) value.apiKey = before.apiKey;
-    value.configured = !!(value.provider && value.provider !== 'none' && value.apiUrl && value.apiKey);
+    // Keep stored secrets when the client sends back the masked placeholders
+    if (value.apiKey?.startsWith('••••')) value.apiKey = before.apiKey;
+    if (value.password?.startsWith('••••')) value.password = before.password;
+    value.configured = isConfigured(value);
   }
+  if (section === 'portal' && value.baseUrl) value.baseUrl = value.baseUrl.replace(/\/$/, '');
   await setSetting(req.companyId, section, value);
   await audit(req, { action: `settings.${section}`, entityType: 'settings', before: maskSecrets({ [section]: before })[section], after: maskSecrets({ [section]: value })[section] });
   res.json(maskSecrets({ [section]: value })[section]);
 }));
+
 
 export default router;

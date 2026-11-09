@@ -18,6 +18,8 @@ export const config = {
   uploadsDir: process.env.UPLOADS_DIR || path.resolve(__dirname, '../../uploads'),
   publicDir: path.resolve(__dirname, '../../public'),
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  // Public URL of the app (used in SMS links). Falls back to the first CORS origin.
+  publicUrl: process.env.PUBLIC_URL || '',
   seedDemo: (process.env.SEED_DEMO || 'true') === 'true',
   adminEmail: process.env.ADMIN_EMAIL || 'admin@carwash.local',
   adminPassword: process.env.ADMIN_PASSWORD || 'Admin@12345',

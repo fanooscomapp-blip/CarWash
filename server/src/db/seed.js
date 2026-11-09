@@ -39,7 +39,7 @@ export async function seedIfEmpty() {
   const [admin] = await db.insert(schema.users).values({ companyId: company.id, roleId: roleRows['Super Admin'].id, name: 'System Administrator', email: config.adminEmail.toLowerCase(), passwordHash: await bcrypt.hash(config.adminPassword, 10), userType: 'admin', dateJoined: today() }).returning();
   await db.insert(schema.smsTemplates).values(SMS_TEMPLATES.map(([key, lang, body]) => ({ companyId: company.id, key, lang, body })));
   await db.insert(schema.settings).values([
-    { companyId: company.id, key: 'bank', value: { bankName: 'Demo Bank', accountName: 'Sparkle Car Wash Co.', accountNumber: '0000-0000-0000', iban: '', instructions: 'Transfer the exact amount and upload the receipt in the portal.' } },
+    { companyId: company.id, key: 'payment', value: { method: 'instapay', instapayAddress: '01000000000', instapayName: 'Sparkle Car Wash Co.', instructions: 'Transfer the exact amount via InstaPay to the number above, then upload a screenshot of the transfer.', instructionsAr: 'حوّل المبلغ بالضبط عبر إنستاباي على الرقم أعلاه ثم ارفع صورة التحويل.' } },
   ]);
   await db.insert(schema.auditLogs).values({ companyId: company.id, userId: admin.id, actorType: 'system', action: 'system.seed', entityType: 'company', entityId: company.id });
 

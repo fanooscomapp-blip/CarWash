@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, UserPlus, Building2, Home, Users, Car, Layers, FileText, RefreshCw, CreditCard, Droplets, UserCog, MessageSquare, BarChart3, ShieldCheck, Settings, ScrollText, Bell, LogOut, Menu, X, Languages, ChevronDown } from 'lucide-react';
+import { LayoutDashboard, UserPlus, Inbox, Building2, Home, Users, Car, Layers, FileText, RefreshCw, CreditCard, Droplets, UserCog, MessageSquare, BarChart3, ShieldCheck, Settings, ScrollText, Bell, LogOut, Menu, X, Languages, ChevronDown } from 'lucide-react';
 import { useAuth } from '../lib/auth.jsx';
 import { useI18n } from '../lib/i18n.jsx';
 import { api } from '../lib/api.js';
@@ -19,10 +19,11 @@ const NAV = [
     { to: '/plans', icon: Layers, key: 'plans', perm: 'plans.view' },
     { to: '/subscriptions', icon: FileText, key: 'subscriptions', perm: 'subscriptions.view' },
     { to: '/renewals', icon: RefreshCw, key: 'renewals', perm: 'subscriptions.view' },
+    { to: '/payments?status=pending_verification', icon: Inbox, key: 'renewalRequests', perm: 'payments.view' },
     { to: '/payments', icon: CreditCard, key: 'payments', perm: 'payments.view' },
     { to: '/operations', icon: Droplets, key: 'operations', perm: 'operations.view', soon: true },
     { to: '/staff', icon: UserCog, key: 'staff', perm: 'staff.view', soon: true },
-    { to: '/sms', icon: MessageSquare, key: 'sms', perm: 'sms.view', soon: true },
+    { to: '/sms', icon: MessageSquare, key: 'sms', perm: 'sms.view' },
     { to: '/reports', icon: BarChart3, key: 'reports', perm: 'reports.view', soon: true },
   ] },
   { group: 'system', items: [
@@ -49,7 +50,7 @@ function Sidebar({ onNavigate }) {
               <p className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{t(`nav.${g.group}`)}</p>
               <div className="space-y-0.5">
                 {items.map((i) => (
-                  <NavLink key={i.to} to={i.to} end={i.end} onClick={onNavigate} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''} ${i.soon ? 'opacity-60' : ''} ${i.highlight && !isActive ? 'text-brand-300' : ''}`}>
+                  <NavLink key={i.to} to={i.to} end={i.end || i.to.includes('?')} onClick={onNavigate} className={({ isActive }) => { const qActive = i.to.includes('?') && window.location.pathname + window.location.search === i.to; const plainActive = isActive && !i.to.includes('?') && !(i.to === '/payments' && window.location.search.includes('status=pending_verification')); return `nav-item ${qActive || plainActive ? 'active' : ''} ${i.soon ? 'opacity-60' : ''} ${i.highlight && !isActive ? 'text-brand-300' : ''}`; }}>
                     <i.icon size={18} /><span className="flex-1">{t(`nav.${i.key}`)}</span>
                     {i.soon && <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px]">{t('nav.comingSoon')}</span>}
                   </NavLink>

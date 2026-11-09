@@ -3,11 +3,15 @@ import { db, schema } from '../db/index.js';
 
 export const SETTING_DEFAULTS = {
   general: { expiringSoonDays: 7, defaultWashingDays: [0, 1, 2, 3, 4, 5, 6], weekStartsOn: 6 },
+  // Payment collection: InstaPay (default for Egypt). Shown to owners on the renewal page.
+  payment: { method: 'instapay', instapayAddress: '', instapayName: '', instructions: '', instructionsAr: '' },
   bank: { bankName: '', accountName: '', accountNumber: '', iban: '', instructions: '' },
-  sms: { provider: 'none', apiUrl: '', apiKey: '', senderId: '', configured: false },
+  // SMS provider. provider: none | smsmisr | generic
+  sms: { provider: 'none', username: '', password: '', senderId: '', environment: 'live', apiUrl: '', apiKey: '', configured: false, defaultLang: 'ar' },
+  portal: { baseUrl: '', sessionDays: 30, linkValidDays: 30 },
   otp: { length: 6, expiryMinutes: 5, maxAttempts: 5, resendCooldownSeconds: 60 },
   photos: { minBeforePhotos: 1, minAfterPhotos: 1, maxPhotoSizeMb: 8 },
-  notifications: { expiryReminderDays: [7, 3, 1, 0], postExpiryReminderDays: [3], notifyAdminOnPendingPayment: true, notifyAdminOnIssue: true },
+  notifications: { expiryReminderDays: [3], sendOnExpiry: true, postExpiryReminderDays: [], notifyAdminOnPendingPayment: true, notifyAdminOnIssue: true, smsOnPaymentApproved: true, smsOnPaymentRejected: true, smsOnWashCompleted: false },
   paymentMethods: ['bank_transfer', 'cash', 'other'],
 };
 
@@ -39,5 +43,6 @@ export async function setSetting(companyId, key, value) {
 export function maskSecrets(settings) {
   const s = structuredClone(settings);
   if (s.sms?.apiKey) s.sms.apiKey = s.sms.apiKey.length > 4 ? '••••' + s.sms.apiKey.slice(-4) : '••••';
+  if (s.sms?.password) s.sms.password = '••••••••';
   return s;
 }

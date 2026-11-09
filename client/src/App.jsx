@@ -23,6 +23,8 @@ import Payments from './pages/Payments.jsx';
 import UsersRoles from './pages/UsersRoles.jsx';
 import SettingsPage from './pages/Settings.jsx';
 import AuditLogs from './pages/AuditLogs.jsx';
+import PortalApp from './portal/PortalApp.jsx';
+import SmsCenter from './pages/SmsCenter.jsx';
 
 function Protected({ children }) {
   const { loading, user } = useAuth();
@@ -41,6 +43,7 @@ function Soon({ phase = 2 }) {
 export default function App() {
   return (
     <Routes>
+      <Route path="/p/*" element={<PortalApp />} />
       <Route path="/login" element={<Login />} />
       <Route element={<Protected><Layout /></Protected>}>
         <Route index element={<Dashboard />} />
@@ -61,7 +64,7 @@ export default function App() {
         <Route path="payments" element={<Payments />} />
         <Route path="operations" element={<Soon phase={3} />} />
         <Route path="staff" element={<Soon phase={3} />} />
-        <Route path="sms" element={<Soon phase={2} />} />
+        <Route path="sms" element={<SmsCenter />} />
         <Route path="reports" element={<Soon phase={2} />} />
         <Route path="users" element={<UsersRoles />} />
         <Route path="settings" element={<SettingsPage />} />

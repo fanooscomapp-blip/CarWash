@@ -5,6 +5,8 @@ import { addDays, daysBetween, money, nextCode, today } from '../lib/util.js';
 import { audit } from '../lib/audit.js';
 import { getSetting } from './settingsService.js';
 import { notifyAdmins } from './notificationService.js';
+import { sendSms } from './smsService.js';
+import { renewalLink } from './renewalLinkService.js';
 
 const { subscriptions, subscriptionVehicles, subscriptionPlans, planPrices, vehicles, units, owners, payments, subscriptionRenewals } = schema;
 
@@ -188,8 +190,27 @@ export async function approvePayment(req, paymentId, notes) {
     await t.update(subscriptions).set({ paymentStatus: 'paid', status: newStatus, updatedAt: new Date() }).where(eq(subscriptions.id, sub.id));
     if (payment.renewal_id) await t.update(subscriptionRenewals).set({ status: 'completed', updatedAt: new Date() }).where(eq(subscriptionRenewals.id, payment.renewal_id));
     await audit(req, { action: 'payment.approve', entityType: 'payment', entityId: paymentId, before: { status: payment.status }, after: { status: 'approved', subscriptionStatus: newStatus } }, t);
-    return { paymentId, subscriptionId: sub.id, subscriptionStatus: newStatus };
+    return { paymentId, subscriptionId: sub.id, subscriptionStatus: newStatus, _notify: { ownerId: sub.ownerId, endDate: sub.endDate } };
+  }).then(async (r) => {
+    // Outside the transaction: SMS to the owner (best effort, logged)
+    try {
+      const notif = await getSetting(req.companyId, 'notifications');
+      if (notif.smsOnPaymentApproved) {
+        const ctx = await paymentSmsContext(r.subscriptionId);
+        if (ctx) await sendSms(req.companyId, { to: ctx.mobile, ownerId: ctx.ownerId, templateKey: 'payment_approved', vars: ctx.vars });
+      }
+    } catch (e) { console.error('payment approved SMS failed', e); }
+    delete r._notify; return r;
   });
+}
+
+async function paymentSmsContext(subscriptionId) {
+  const [row] = await db.execute(sql`SELECT o.id AS owner_id, o.name, o.mobile, s.end_date::text, s.subscription_code, s.final_amount, s.plan_snapshot->>'name' AS plan_name,
+      (SELECT string_agg(v.plate_number, ', ') FROM subscription_vehicles sv JOIN vehicles v ON v.id = sv.vehicle_id WHERE sv.subscription_id = s.id) AS plates
+    FROM subscriptions s JOIN owners o ON o.id = s.owner_id WHERE s.id = ${subscriptionId}`).then((r) => r.rows || r);
+  if (!row) return null;
+  const [y, m, d] = row.end_date.split('-');
+  return { ownerId: row.owner_id, mobile: row.mobile, vars: { OwnerName: row.name, VehicleNumber: row.plates, ExpiryDate: `${d}/${m}/${y}`, RenewalId: row.subscription_code, Amount: row.final_amount, PlanName: row.plan_name } };
 }
 
 export async function rejectPayment(req, paymentId, reason) {
@@ -202,7 +223,19 @@ export async function rejectPayment(req, paymentId, reason) {
     await t.update(subscriptions).set({ paymentStatus: 'rejected', status: 'pending_payment', statusReason: reason, updatedAt: new Date() }).where(eq(subscriptions.id, payment.subscription_id));
     if (payment.renewal_id) await t.update(subscriptionRenewals).set({ status: 'rejected', notes: reason, updatedAt: new Date() }).where(eq(subscriptionRenewals.id, payment.renewal_id));
     await audit(req, { action: 'payment.reject', entityType: 'payment', entityId: paymentId, before: { status: payment.status }, after: { status: 'awaiting_new_receipt' }, reason }, t);
-    return { paymentId };
+    return { paymentId, subscriptionId: payment.subscription_id };
+  }).then(async (r) => {
+    try {
+      const notif = await getSetting(req.companyId, 'notifications');
+      if (notif.smsOnPaymentRejected) {
+        const ctx = await paymentSmsContext(r.subscriptionId);
+        // The rejected subscription is the *new* one; its renewal link is the link of the previous subscription in the chain (or itself when no chain)
+        const [sub] = await db.select({ renewedFromId: subscriptions.renewedFromId }).from(subscriptions).where(eq(subscriptions.id, r.subscriptionId));
+        const link = await renewalLink(sub.renewedFromId || r.subscriptionId);
+        if (ctx) await sendSms(req.companyId, { to: ctx.mobile, ownerId: ctx.ownerId, templateKey: 'payment_rejected', vars: { ...ctx.vars, Reason: reason, RenewalLink: link } });
+      }
+    } catch (e) { console.error('payment rejected SMS failed', e); }
+    return r;
   });
 }
 

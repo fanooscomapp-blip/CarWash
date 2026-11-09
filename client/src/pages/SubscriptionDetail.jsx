@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, Pause, Play, XCircle, CheckCircle2, Ban } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Pause, Play, XCircle, CheckCircle2, Ban, Link2, MessageSquare, Copy } from 'lucide-react';
 import { useQuery } from '../lib/hooks.js';
 import { useI18n } from '../lib/i18n.jsx';
 import { useAuth } from '../lib/auth.jsx';
@@ -13,6 +13,9 @@ export default function SubscriptionDetail() {
   const { id } = useParams(); const { t, lang } = useI18n(); const { can, company } = useAuth(); const toast = useToast(); const navigate = useNavigate();
   const { data: s, loading, error, reload } = useQuery(`/admin/subscriptions/${id}`);
   const [renew, setRenew] = useState(false); const [dialog, setDialog] = useState(null); const [busy, setBusy] = useState(false);
+  const [link, setLink] = useState(null); const [linkBusy, setLinkBusy] = useState(false);
+  const getLink = async () => { setLinkBusy(true); try { const { data } = await api.get(`/admin/sms/renewal-link/${id}`); setLink(data.link); try { await navigator.clipboard.writeText(data.link); toast.success(t('common.copied')); } catch { /* clipboard blocked */ } } catch (e) { toast.error(e.message); } finally { setLinkBusy(false); } };
+  const sendReminder = async () => { setBusy(true); try { const { data } = await api.post(`/admin/sms/renewal-reminder/${id}`); setLink(data.link); toast[data.log?.status === 'sent' ? 'success' : 'error'](t(`sms.status_${data.log?.status || 'failed'}`)); } catch (e) { toast.error(e.message); } finally { setBusy(false); } };
   const cur = company?.currency || 'EGP'; const days = t('common.weekdays');
   if (error) return <ErrorBox error={error} onRetry={reload} />;
   if (loading && !s) return <Loading />;
@@ -26,10 +29,13 @@ export default function SubscriptionDetail() {
         actions={<>
           {can('payments.approve') && pendingPayment && <><button className="btn-success" onClick={() => setDialog('approve')}><CheckCircle2 size={16} />{t('subs.approvePayment')}</button><button className="btn-secondary" onClick={() => setDialog('reject')}><Ban size={16} />{t('subs.rejectPayment')}</button></>}
           {can('subscriptions.renew', 'subscriptions.manage') && canRenew && <button className="btn-accent" onClick={() => setRenew(true)}><RefreshCw size={16} />{t('vehicles.renew')}</button>}
+          {can('subscriptions.view') && canRenew && <button className="btn-secondary" disabled={linkBusy} onClick={getLink}><Link2 size={16} />{t('sms.copyLink')}</button>}
+          {can('sms.send', 'subscriptions.renew') && canRenew && <button className="btn-secondary" disabled={busy} onClick={sendReminder}><MessageSquare size={16} />{t('sms.sendReminder')}</button>}
           {can('subscriptions.manage') && ['active', 'expiring_soon'].includes(s.status) && <button className="btn-secondary" onClick={() => setDialog('suspend')}><Pause size={16} />{t('subs.suspend')}</button>}
           {can('subscriptions.manage') && s.status === 'suspended' && <button className="btn-success" onClick={() => act(() => api.post(`/admin/subscriptions/${id}/resume`, {}))}><Play size={16} />{t('subs.resume')}</button>}
           {can('subscriptions.manage') && !['cancelled', 'expired'].includes(s.status) && <button className="btn-danger" onClick={() => setDialog('cancel')}><XCircle size={16} />{t('subs.cancel')}</button>}
         </>} />
+      {link && <div className="mb-4 flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm"><Link2 size={15} className="text-brand-600 shrink-0" /><a href={link} target="_blank" rel="noreferrer" className="flex-1 truncate text-brand-700 underline" dir="ltr">{link}</a><button className="btn-ghost btn-sm" onClick={() => { navigator.clipboard?.writeText(link); toast.success(t('common.copied')); }}><Copy size={14} /></button><a className="btn-ghost btn-sm" href={`https://wa.me/${s.ownerMobile.replace(/\D/g, '')}?text=${encodeURIComponent(link)}`} target="_blank" rel="noreferrer">WhatsApp</a></div>}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <KpiCard label={t('subs.daysRemaining')} value={['active', 'expiring_soon'].includes(s.status) ? s.daysRemaining : '—'} tone={s.daysRemaining <= 7 ? 'warning' : 'default'} hint={`${fmtDate(s.startDate, lang)} → ${fmtDate(s.endDate, lang)}`} />
         <KpiCard label={t('subs.washes')} value={`${s.washesUsed} / ${s.washesAllowed}`} hint={`${s.washesAllowed - s.washesUsed} ${t('common.remaining')}`} />
