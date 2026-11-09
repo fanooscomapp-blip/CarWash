@@ -40,6 +40,14 @@ html[dir="rtl"] body { font-family: var(--font-arabic); }
 .table th { @apply text-start text-xs font-semibold uppercase tracking-wide text-slate-500 bg-slate-50 px-4 py-3 border-b border-slate-200 whitespace-nowrap; }
 .table td { @apply px-4 py-3 border-b border-slate-100 align-middle; }
 .table tbody tr:hover { @apply bg-slate-50/70; }
+/* Actions column pinned to the inline end so it never needs horizontal scrolling */
+.table th.sticky-end, .table td.sticky-end { position: sticky; inset-inline-end: 0; z-index: 1; background: #fff; box-shadow: -8px 0 10px -8px rgba(15, 23, 42, 0.18); }
+[dir='rtl'] .table th.sticky-end, [dir='rtl'] .table td.sticky-end { box-shadow: 8px 0 10px -8px rgba(15, 23, 42, 0.18); }
+.table th.sticky-end { background: #f8fafc; }
+.table tbody tr:hover td.sticky-end { background: #f8fafc; }
+.table th.sticky-start, .table td.sticky-start { position: sticky; inset-inline-start: 0; z-index: 1; background: #fff; }
+.table th.sticky-start { background: #f8fafc; }
+.table tbody tr:hover td.sticky-start { background: #f8fafc; }
 .chip { @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium; }
 .nav-item { @apply flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-300 hover:bg-white/10 hover:text-white transition-colors; }
 .nav-item.active { @apply bg-brand-600/90 text-white; }

@@ -200,19 +200,21 @@ export function SearchInput({ value, onChange, placeholder, className = '' }) {
 }
 
 // ───────── Data table ─────────
-export function DataTable({ columns, rows, loading, error, onRetry, emptyTitle, emptyHint, pagination, onPage, rowKey = 'id', onRowClick }) {
+export function DataTable({ columns, rows, loading, error, onRetry, emptyTitle, emptyHint, pagination, onPage, rowKey = 'id', onRowClick, pinFirst = true }) {
+  // The actions column (key "actions" or sticky:true) stays visible at the inline end; the first column stays at the start
+  const cellClass = (c, i) => [c.className, (c.key === 'actions' || c.sticky) && 'sticky-end', pinFirst && i === 0 && columns.length > 3 && 'sticky-start'].filter(Boolean).join(' ');
   if (error) return <div className="p-4"><ErrorBox error={error} onRetry={onRetry} /></div>;
   return (
     <div className="card overflow-hidden">
       <div className="overflow-x-auto">
         <table className="table">
-          <thead><tr>{columns.map((c) => <th key={c.key} className={c.className}>{c.header}</th>)}</tr></thead>
+          <thead><tr>{columns.map((c, i) => <th key={c.key} className={cellClass(c, i)}>{c.header}</th>)}</tr></thead>
           <tbody>
             {loading && !rows ? <tr><td colSpan={columns.length}><Loading /></td></tr>
               : !rows?.length ? <tr><td colSpan={columns.length}><Empty title={emptyTitle} hint={emptyHint} /></td></tr>
               : rows.map((r) => (
                 <tr key={r[rowKey]} onClick={onRowClick ? () => onRowClick(r) : undefined} className={onRowClick ? 'cursor-pointer' : ''}>
-                  {columns.map((c) => <td key={c.key} className={c.className}>{c.render ? c.render(r) : r[c.key] ?? '—'}</td>)}
+                  {columns.map((c, i) => <td key={c.key} className={cellClass(c, i)}>{c.render ? c.render(r) : r[c.key] ?? '—'}</td>)}
                 </tr>
               ))}
           </tbody>
