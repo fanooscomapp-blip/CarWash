@@ -54,7 +54,7 @@ export default function Register() {
   const reset = () => { setMobile(''); setAltMobile(''); setName(''); setEmail(''); setLookup(null); setRows([newRow()]); setDone(null); setError(null); };
 
   if (!can('units.manage', 'vehicles.manage')) return null;
-  const compound = lookups.data?.compounds.find((c) => c.id === compoundId);
+  const compound = lookups.data?.activeCompounds.find((c) => c.id === compoundId);
   const existingHere = lookup?.found ? lookup.vehicles.filter((v) => v.compoundId === compoundId) : [];
 
   if (done) return (
@@ -76,7 +76,7 @@ export default function Register() {
           {/* Compound + owner */}
           <div className="card p-5 grid sm:grid-cols-2 gap-4">
             <Field label={<span className="flex items-center gap-1.5"><Building2 size={13} />{t('common.compound')}</span>} required>
-              <select className="input font-medium" value={compoundId} onChange={(e) => setCompoundId(e.target.value)}>{lookups.data?.compounds.filter((c) => c.status === 'active').map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+              <select className="input font-medium" value={compoundId} onChange={(e) => setCompoundId(e.target.value)}>{lookups.data?.activeCompounds.filter((c) => c.status === 'active').map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
             </Field>
             <Field label={<span className="flex items-center gap-1.5"><Phone size={13} />{t('units.ownerMobile')}</span>} required hint={looking ? t('register.looking') : lookup?.found ? t('register.foundOwner') : lookup && !lookup.found ? t('register.newOwner') : t('register.mobileHint')}>
               <div className="relative"><Input dir="ltr" inputMode="tel" placeholder="01xxxxxxxxx" value={mobile} onChange={(e) => { setMobile(e.target.value); }} className={lookup?.found ? 'border-emerald-500 bg-emerald-50/40' : ''} />{looking && <Spinner className="absolute top-2.5 end-3 text-slate-400" />}{lookup?.found && !looking && <Check size={16} className="absolute top-3 end-3 text-emerald-600" />}</div>

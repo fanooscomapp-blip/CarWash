@@ -33,7 +33,7 @@ function UserForm({ open, onClose, initial, roles, onSaved }) {
         {form.userType === 'staff' && <>
           <Field label={t('users.employeeCode')}><Input value={form.employeeCode} onChange={set('employeeCode')} /></Field>
           <Field label={t('users.dateJoined')}><Input type="date" value={form.dateJoined} onChange={set('dateJoined')} /></Field>
-          <Field label={t('users.compounds')} className="sm:col-span-2"><div className="flex flex-wrap gap-2">{lookups.data?.compounds.map((c) => { const on = form.compoundIds.includes(c.id); return <button type="button" key={c.id} onClick={() => setForm({ ...form, compoundIds: on ? form.compoundIds.filter((x) => x !== c.id) : [...form.compoundIds, c.id] })} className={`btn btn-sm ${on ? 'bg-navy-900 text-white' : 'btn-secondary'}`}>{c.name}</button>; })}</div></Field>
+          <Field label={t('users.compounds')} className="sm:col-span-2"><div className="flex flex-wrap gap-2">{lookups.data?.activeCompounds.map((c) => { const on = form.compoundIds.includes(c.id); return <button type="button" key={c.id} onClick={() => setForm({ ...form, compoundIds: on ? form.compoundIds.filter((x) => x !== c.id) : [...form.compoundIds, c.id] })} className={`btn btn-sm ${on ? 'bg-navy-900 text-white' : 'btn-secondary'}`}>{c.name}</button>; })}</div></Field>
         </>}
         <div className="sm:col-span-2"><Toggle checked={form.isActive} onChange={(v) => setForm({ ...form, isActive: v })} label={t('common.active')} /></div>
         {error && <p className="sm:col-span-2 text-sm text-red-600">{error}</p>}

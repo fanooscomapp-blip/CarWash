@@ -27,5 +27,8 @@ export function useDebounced(value, ms = 300) {
 }
 
 export function useLookups() {
-  return useQuery('/admin/lookups');
+  const q = useQuery('/admin/lookups');
+  // Forms that create something should only offer active compounds; filters keep all of them
+  const data = q.data ? { ...q.data, activeCompounds: (q.data.compounds || []).filter((c) => c.status !== 'inactive') } : q.data;
+  return { ...q, data };
 }
