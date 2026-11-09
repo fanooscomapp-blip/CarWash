@@ -22,6 +22,13 @@
       "when": 1794220262804,
       "tag": "0002_phase2_portal",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794224776979,
+      "tag": "0003_registration_requests",
+      "breakpoints": true
     }
   ]
 }

@@ -21,9 +21,21 @@ const SMS_TEMPLATES = [
   ['payment_rejected', 'ar', 'تعذر التحقق من إيصال الدفع {RenewalId}: {Reason}. يرجى رفع إيصال جديد: {RenewalLink}'],
   ['wash_completed', 'en', 'Your vehicle {VehicleNumber} was washed today. Remaining washes: {RemainingWashes}.'],
   ['wash_completed', 'ar', 'تم غسيل مركبتك {VehicleNumber} اليوم. الغسلات المتبقية: {RemainingWashes}.'],
+  ['registration_approved', 'en', 'Welcome {OwnerName}! Your car wash subscription ({PlanName}) for {VehicleNumber} is active until {ExpiryDate}. Manage it here: {RenewalLink}'],
+  ['registration_approved', 'ar', 'أهلاً {OwnerName}! تم تفعيل اشتراك غسيل السيارة ({PlanName}) للمركبة {VehicleNumber} حتى {ExpiryDate}. لمتابعة اشتراكك: {RenewalLink}'],
   ['otp', 'en', 'Your Car Wash verification code is {Code}. It expires in {Minutes} minutes.'],
   ['otp', 'ar', 'رمز التحقق الخاص بك هو {Code}. صالح لمدة {Minutes} دقائق.'],
 ];
+
+// Idempotent upgrades for existing databases (new templates added in later phases)
+export async function ensureTemplates() {
+  const cos = await db.select({ id: schema.companies.id }).from(schema.companies);
+  for (const c of cos) {
+    for (const [key, lang, body] of SMS_TEMPLATES) {
+      await db.insert(schema.smsTemplates).values({ companyId: c.id, key, lang, body }).onConflictDoNothing();
+    }
+  }
+}
 
 export async function seedIfEmpty() {
   const [{ count }] = await db.select({ count: sql`count(*)`.mapWith(Number) }).from(schema.companies);

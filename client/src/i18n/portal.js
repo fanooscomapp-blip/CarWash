@@ -14,6 +14,9 @@ export const portalAr = {
   // Requests
   noRequests: 'لا توجد طلبات بعد', request: 'طلب', amount: 'المبلغ', submittedOn: 'أُرسل في', receipts: 'إيصالات',
   loading: 'جارٍ التحميل…', error: 'حدث خطأ، حاول مرة أخرى', back: 'رجوع', lang: 'English',
+  openInstapay: 'افتح إنستاباي', copyAmount: 'نسخ المبلغ', instapayHint: 'بيفتح تطبيق إنستاباي على حسابنا — الصق المبلغ وأكد التحويل',
+  // Join
+  joinTitle: 'اشتراك جديد', joinSubtitle: 'سجّل سيارتك واختر الباقة وادفع — بنفعّل اشتراكك بعد مراجعة التحويل', joinCompound: 'الكمبوند', joinName: 'الاسم', joinMobile: 'رقم الجوال', joinUnit: 'كود الوحدة', joinVehicle: 'السيارة {n}', joinPlate: 'رقم اللوحة', joinBrand: 'الماركة', joinModel: 'الموديل', joinBody: 'الشكل', joinColor: 'اللون', joinAddVehicle: 'إضافة سيارة أخرى', joinPlan: 'الباقة', joinSubmit: 'إرسال طلب الاشتراك', joinClosed: 'التسجيل مغلق حالياً. تواصل مع إدارة الكمبوند.', joinDoneTitle: 'تم استلام طلبك', joinDoneBody: 'رقم الطلب {code}. بنراجع التحويل وبنفعّل اشتراكك، وبتوصلك رسالة تأكيد على {mobile}.', joinSaveLink: 'احفظ هذه الصفحة لمتابعة حالة الطلب', joinStatus: 'حالة الطلب', joinPending: 'قيد المراجعة', joinApproved: 'تم التفعيل — أهلاً بك!', joinRejected: 'لم يتم قبول الطلب', joinGoPortal: 'الدخول إلى حسابي', joinAgain: 'تقديم طلب جديد', joinRequired: 'يرجى تعبئة الحقول المطلوبة وإرفاق صورة التحويل', joinBrandSearch: 'ابحث…',
 };
 
 export const portalEn = {
@@ -28,4 +31,6 @@ export const portalEn = {
   ts_completed: 'Washed', ts_assigned: 'Scheduled', ts_accepted: 'Scheduled', ts_in_progress: 'In progress', ts_cancelled: 'Cancelled', ts_issue_reported: 'Issue',
   noRequests: 'No requests yet', request: 'Request', amount: 'Amount', submittedOn: 'Submitted', receipts: 'receipts',
   loading: 'Loading…', error: 'Something went wrong, please try again', back: 'Back', lang: 'العربية',
+  openInstapay: 'Open InstaPay', copyAmount: 'Copy amount', instapayHint: 'Opens the InstaPay app on our account — paste the amount and confirm',
+  joinTitle: 'New subscription', joinSubtitle: 'Register your car, choose a plan and pay — we activate your subscription once the transfer is verified', joinCompound: 'Compound', joinName: 'Full name', joinMobile: 'Mobile number', joinUnit: 'Unit code', joinVehicle: 'Vehicle {n}', joinPlate: 'Plate number', joinBrand: 'Brand', joinModel: 'Model', joinBody: 'Body type', joinColor: 'Colour', joinAddVehicle: 'Add another vehicle', joinPlan: 'Plan', joinSubmit: 'Submit subscription request', joinClosed: 'Registration is currently closed. Please contact the compound administration.', joinDoneTitle: 'Request received', joinDoneBody: 'Request {code}. We will verify the transfer and activate your subscription; a confirmation SMS will be sent to {mobile}.', joinSaveLink: 'Keep this page to track your request', joinStatus: 'Request status', joinPending: 'Under review', joinApproved: 'Activated — welcome!', joinRejected: 'Request not accepted', joinGoPortal: 'Go to my account', joinAgain: 'Submit a new request', joinRequired: 'Please fill the required fields and attach the transfer screenshot', joinBrandSearch: 'Search…',
 };

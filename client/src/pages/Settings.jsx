@@ -61,6 +61,7 @@ export default function SettingsPage() {
         {s.payment.method === 'instapay' && <>
           <Field label={t('settings.instapayAddress')} hint={t('settings.instapayHint')}><Input dir="ltr" value={s.payment.instapayAddress} onChange={(e) => upd('payment', { instapayAddress: e.target.value })} placeholder="01xxxxxxxxx / name@instapay" /></Field>
           <Field label={t('settings.instapayName')}><Input value={s.payment.instapayName} onChange={(e) => upd('payment', { instapayName: e.target.value })} /></Field>
+          <Field label={t('settings.instapayLink')} hint={t('settings.instapayLinkHint')} className="sm:col-span-2"><Input dir="ltr" value={s.payment.instapayLink || ''} onChange={(e) => upd('payment', { instapayLink: e.target.value })} placeholder="https://ipn.eg/S/yourname/instapay/XXXXX" /></Field>
         </>}
         <Field label={t('settings.instructionsEn')}><Textarea rows={2} value={s.payment.instructions} onChange={(e) => upd('payment', { instructions: e.target.value })} /></Field>
         <Field label={t('settings.instructionsAr')}><Textarea rows={2} dir="rtl" value={s.payment.instructionsAr} onChange={(e) => upd('payment', { instructionsAr: e.target.value })} /></Field>
@@ -97,6 +98,8 @@ export default function SettingsPage() {
         <Field label={t('settings.portalBaseUrl')} hint={t('settings.portalBaseUrlHint')} className="sm:col-span-2"><Input dir="ltr" value={s.portal.baseUrl} onChange={(e) => upd('portal', { baseUrl: e.target.value })} placeholder={window.location.origin} /></Field>
         <Field label={t('settings.linkValidDays')}><Input type="number" min="1" max="365" value={s.portal.linkValidDays} onChange={(e) => upd('portal', { linkValidDays: Number(e.target.value) })} /></Field>
         <Field label={t('settings.sessionDays')}><Input type="number" min="1" max="365" value={s.portal.sessionDays} onChange={(e) => upd('portal', { sessionDays: Number(e.target.value) })} /></Field>
+        <div className="sm:col-span-2"><Toggle checked={s.portal.selfRegistration !== false} onChange={(v) => upd('portal', { selfRegistration: v })} label={t('settings.selfRegistration')} /></div>
+        <Field label={t('settings.joinMaxPerHour')}><Input type="number" min="1" max="100" value={s.portal.joinMaxPerHour ?? 5} onChange={(e) => upd('portal', { joinMaxPerHour: Number(e.target.value) })} /></Field>
       </Section>
 
       <Section title={t('settings.otp')} busy={busy.otp} onSave={() => save('otp', s.otp)}>

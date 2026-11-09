@@ -394,6 +394,33 @@ export const otpCodes = pgTable('otp_codes', {
   createdAt: createdAt(),
 });
 
+// Self-registration requests from the public join page. Nothing is written to owners/units/vehicles until an admin approves.
+export const registrationRequests = pgTable('registration_requests', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  companyId: uuid('company_id').references(() => companies.id, { onDelete: 'cascade' }).notNull(),
+  requestCode: varchar('request_code', { length: 20 }).notNull(),
+  compoundId: uuid('compound_id').references(() => compounds.id).notNull(),
+  ownerName: varchar('owner_name', { length: 200 }).notNull(),
+  mobile: varchar('mobile', { length: 30 }).notNull(),
+  unitNumber: varchar('unit_number', { length: 40 }).notNull(),
+  vehicles: jsonb('vehicles').notNull(),            // [{ plateNumber, brand, model, color, vehicleType }]
+  planId: uuid('plan_id').references(() => subscriptionPlans.id).notNull(),
+  amount: numeric('amount', { precision: 12, scale: 2 }).notNull(),
+  receiptPath: text('receipt_path').notNull(),
+  receiptMime: varchar('receipt_mime', { length: 80 }),
+  note: text('note'),
+  status: varchar('status', { length: 30 }).default('pending').notNull(), // pending | approved | rejected
+  rejectionReason: text('rejection_reason'),
+  reviewedBy: uuid('reviewed_by').references(() => users.id),
+  reviewedAt: ts('reviewed_at'),
+  resultOwnerId: uuid('result_owner_id').references(() => owners.id),
+  resultSubscriptionId: uuid('result_subscription_id').references(() => subscriptions.id),
+  statusToken: varchar('status_token', { length: 80 }).notNull(), // lets the applicant check status without login
+  ip: varchar('ip', { length: 60 }),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+}, (t) => [uniqueIndex('regreq_company_code').on(t.companyId, t.requestCode), uniqueIndex('regreq_status_token').on(t.statusToken), index('regreq_status').on(t.companyId, t.status)]);
+
 export const auditLogs = pgTable('audit_logs', {
   id: uuid('id').primaryKey().defaultRandom(),
   companyId: uuid('company_id').references(() => companies.id, { onDelete: 'cascade' }).notNull(),

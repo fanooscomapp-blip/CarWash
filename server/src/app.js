@@ -23,6 +23,8 @@ import registrationRouter from './routes/registration.js';
 import smsRouter from './routes/sms.js';
 import washRecordsRouter from './routes/washRecords.js';
 import portalRouter from './routes/portal.js';
+import joinRouter from './routes/join.js';
+import registrationRequestsRouter from './routes/registrationRequests.js';
 
 export function createApp() {
   const app = express();
@@ -34,6 +36,7 @@ export function createApp() {
 
   app.get('/api/health', (_req, res) => res.json({ ok: true, time: new Date().toISOString() }));
   app.use('/api/auth', authRouter);
+  app.use('/api/portal/join', joinRouter); // public self-registration (no login)
   app.use('/api/portal', portalRouter);   // owner portal: link tokens + OTP sessions (no admin JWT)
 
   // Everything below requires a valid session; admin-portal routes additionally require an admin-type user.
@@ -55,6 +58,7 @@ export function createApp() {
   admin.use('/lookups', lookupsRouter);
   admin.use('/sms', smsRouter);
   admin.use('/wash-records', washRecordsRouter);
+  admin.use('/registration-requests', registrationRequestsRouter);
   app.use('/api/admin', admin);
 
   app.use('/api', (_req, _res, next) => next(notFound('Endpoint')));

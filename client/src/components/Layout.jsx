@@ -19,6 +19,7 @@ const NAV = [
     { to: '/plans', icon: Layers, key: 'plans', perm: 'plans.view' },
     { to: '/subscriptions', icon: FileText, key: 'subscriptions', perm: 'subscriptions.view' },
     { to: '/renewals', icon: RefreshCw, key: 'renewals', perm: 'subscriptions.view' },
+    { to: '/registration-requests', icon: UserPlus, key: 'registrationRequests', perm: 'payments.view' },
     { to: '/payments?status=pending_verification', icon: Inbox, key: 'renewalRequests', perm: 'payments.view' },
     { to: '/payments', icon: CreditCard, key: 'payments', perm: 'payments.view' },
     { to: '/operations', icon: Droplets, key: 'operations', perm: 'operations.view', soon: true },

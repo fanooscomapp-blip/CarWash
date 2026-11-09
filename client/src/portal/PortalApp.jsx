@@ -5,6 +5,7 @@ import RenewPage from './RenewPage.jsx';
 import LoginPage from './LoginPage.jsx';
 import { HomePage, VehiclesPage, VehicleDetailPage, RequestsPage } from './HomePages.jsx';
 import WashesPage from './WashesPage.jsx';
+import JoinPage, { JoinStatusPage } from './JoinPage.jsx';
 
 export default function PortalApp() {
   return (
@@ -12,6 +13,8 @@ export default function PortalApp() {
       <Routes>
         <Route path="renew/:token" element={<RenewPage />} />
         <Route path="login" element={<LoginPage />} />
+        <Route path="join" element={<JoinPage />} />
+        <Route path="join/status/:token" element={<JoinStatusPage />} />
         <Route element={<RequireOwner><PortalShell /></RequireOwner>}>
           <Route path="home" element={<HomePage />} />
           <Route path="vehicles" element={<VehiclesPage />} />

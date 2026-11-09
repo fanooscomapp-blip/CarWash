@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate, Link } from 'react-router-dom';
 import { Phone, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { papi, usePortal } from './portalLib.jsx';
 import { PortalShell, Card, BigButton, Spinner } from './PortalLayout.jsx';
@@ -44,6 +44,7 @@ export default function LoginPage() {
             </>
           )}
         </Card>
+        <p className="mt-4 text-center text-sm"><Link to="/p/join" className="text-brand-600 font-semibold underline">{t('joinTitle')} →</Link></p>
       </div>
     </PortalShell>
   );

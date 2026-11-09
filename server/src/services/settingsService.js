@@ -4,11 +4,11 @@ import { db, schema } from '../db/index.js';
 export const SETTING_DEFAULTS = {
   general: { expiringSoonDays: 7, defaultWashingDays: [0, 1, 2, 3, 4, 5, 6], weekStartsOn: 6 },
   // Payment collection: InstaPay (default for Egypt). Shown to owners on the renewal page.
-  payment: { method: 'instapay', instapayAddress: '', instapayName: '', instructions: '', instructionsAr: '' },
+  payment: { method: 'instapay', instapayAddress: '', instapayName: '', instapayLink: '', instructions: '', instructionsAr: '' },
   bank: { bankName: '', accountName: '', accountNumber: '', iban: '', instructions: '' },
   // SMS provider. provider: none | smsmisr | generic
   sms: { provider: 'none', username: '', password: '', senderId: '', environment: 'live', apiUrl: '', apiKey: '', configured: false, defaultLang: 'ar' },
-  portal: { baseUrl: '', sessionDays: 30, linkValidDays: 30 },
+  portal: { baseUrl: '', sessionDays: 30, linkValidDays: 30, selfRegistration: true, joinMaxPerHour: 5 },
   otp: { length: 6, expiryMinutes: 5, maxAttempts: 5, resendCooldownSeconds: 60 },
   photos: { minBeforePhotos: 1, minAfterPhotos: 1, maxPhotoSizeMb: 8 },
   notifications: { expiryReminderDays: [3], sendOnExpiry: true, postExpiryReminderDays: [], notifyAdminOnPendingPayment: true, notifyAdminOnIssue: true, smsOnPaymentApproved: true, smsOnPaymentRejected: true, smsOnWashCompleted: false },

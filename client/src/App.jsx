@@ -25,6 +25,7 @@ import SettingsPage from './pages/Settings.jsx';
 import AuditLogs from './pages/AuditLogs.jsx';
 import PortalApp from './portal/PortalApp.jsx';
 import SmsCenter from './pages/SmsCenter.jsx';
+import RegistrationRequests from './pages/RegistrationRequests.jsx';
 
 function Protected({ children }) {
   const { loading, user } = useAuth();
@@ -61,6 +62,7 @@ export default function App() {
         <Route path="subscriptions/new" element={<SubscriptionNew />} />
         <Route path="subscriptions/:id" element={<SubscriptionDetail />} />
         <Route path="renewals" element={<Renewals />} />
+        <Route path="registration-requests" element={<RegistrationRequests />} />
         <Route path="payments" element={<Payments />} />
         <Route path="operations" element={<Soon phase={3} />} />
         <Route path="staff" element={<Soon phase={3} />} />

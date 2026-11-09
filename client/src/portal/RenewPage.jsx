@@ -1,20 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Check, Copy, Upload, Car, AlertTriangle, Clock, FileImage, LogIn } from 'lucide-react';
+import { Check, Upload, Car, AlertTriangle, Clock, FileImage, LogIn } from 'lucide-react';
 import { papi, usePortal, fmtDate, fmtMoney, Badge } from './portalLib.jsx';
 import { PortalShell, Card, BigButton, Spinner, Center } from './PortalLayout.jsx';
+import PaymentBox from './PaymentBox.jsx';
 
 export default function RenewPage() {
   const { token } = useParams(); const { t, lang } = usePortal();
   const [data, setData] = useState(null); const [err, setErr] = useState(null);
-  const [planId, setPlanId] = useState(null); const [file, setFile] = useState(null); const [note, setNote] = useState(''); const [busy, setBusy] = useState(false); const [done, setDone] = useState(null); const [copied, setCopied] = useState(false); const [submitErr, setSubmitErr] = useState(null);
+  const [planId, setPlanId] = useState(null); const [file, setFile] = useState(null); const [note, setNote] = useState(''); const [busy, setBusy] = useState(false); const [done, setDone] = useState(null); const [submitErr, setSubmitErr] = useState(null);
   const fileRef = useRef();
   const load = () => papi.get(`/renew/${token}`).then((r) => { setData(r.data); setPlanId((p) => p || r.data.request?.planId || r.data.plans.find((x) => x.isCurrent)?.id || r.data.plans[0]?.id); }).catch((e) => setErr(e));
   useEffect(() => { load(); }, [token]); // eslint-disable-line
   const cur = data?.company?.currency || 'EGP';
   const plan = data?.plans.find((p) => p.id === planId);
   const pName = (p) => (lang === 'ar' && p?.planNameAr) ? p.planNameAr : (lang === 'ar' && p?.nameAr) ? p.nameAr : p?.planName || p?.name;
-  const copy = async () => { try { await navigator.clipboard.writeText(data.payment.instapayAddress); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* ignore */ } };
   const submit = async () => {
     setBusy(true); setSubmitErr(null);
     try { const fd = new FormData(); fd.append('planId', planId); if (note) fd.append('note', note); fd.append('receipt', file); const r = await papi.post(`/renew/${token}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }); setDone(r.data); setFile(null); load(); }
@@ -78,15 +78,7 @@ export default function RenewPage() {
             </div>
 
             {/* Payment */}
-            <Card className="p-4 space-y-3">
-              <div className="flex items-center justify-between"><p className="text-sm text-slate-500">{t('total')}</p><p className="text-2xl font-bold text-navy-900">{fmtMoney(plan?.price, cur, lang)}</p></div>
-              <div className="rounded-xl bg-navy-900 text-white p-4">
-                <p className="text-xs text-slate-300">{t('payVia')}</p>
-                <div className="mt-1 flex items-center justify-between gap-2"><p className="text-xl font-bold tracking-wide" dir="ltr">{data.payment.instapayAddress || '—'}</p><button type="button" onClick={copy} className="rounded-lg bg-white/15 px-3 py-1.5 text-xs font-semibold hover:bg-white/25 flex items-center gap-1">{copied ? <Check size={14} /> : <Copy size={14} />}{copied ? t('copied') : t('copy')}</button></div>
-                {data.payment.instapayName && <p className="text-xs text-slate-300 mt-1">{t('payTo')}: {data.payment.instapayName}</p>}
-              </div>
-              <p className="text-xs text-slate-500">{(lang === 'ar' ? data.payment.instructionsAr : data.payment.instructions) || t('thenUpload')}</p>
-            </Card>
+            <Card className="p-4"><PaymentBox amount={plan?.price} payment={data.payment} currency={cur} /></Card>
 
             {/* Receipt upload */}
             <Card className="p-4 space-y-3">
