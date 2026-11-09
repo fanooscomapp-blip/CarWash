@@ -14,7 +14,7 @@ import { db, schema } from '../db/index.js';
 import { wrap, notFound, badRequest, unauthorized, forbidden, validationFailed, conflict } from '../lib/errors.js';
 import { authenticate, signToken } from '../middleware/auth.js';
 import { audit } from '../lib/audit.js';
-import { today, addDays, nextCode } from '../lib/util.js';
+import { today, addDays, nextCode, businessToday } from '../lib/util.js';
 import { makeUploader, storageKey } from '../lib/uploads.js';
 import { storeUpload, sendStored } from '../lib/storage.js';
 import { getSetting } from '../services/settingsService.js';
@@ -26,6 +26,7 @@ const { users, washingTasks, washingOperations, washPhotos, subscriptions, compa
 const rows = (r) => r.rows || r;
 const upload = makeUploader('washes', { maxMb: 12 });
 const photosField = upload.array('photos', 8);
+const bizToday = async (companyId) => businessToday((await getSetting(companyId, 'general')).dayStartHour);
 const cleanup = (files) => (files || []).forEach((f) => fs.unlink(f.path, () => {}));
 
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false, message: { error: { code: 'RATE_LIMITED', message: 'Too many attempts, try again later' } } });
@@ -47,9 +48,10 @@ router.use(authenticate, requireStaff);
 
 router.get('/me', wrap(async (req, res) => {
   const company = await db.query.companies.findFirst({ where: eq(companies.id, req.companyId) });
-  const [outcomes, photos, assignment] = await Promise.all([getSetting(req.companyId, 'outcomes'), getSetting(req.companyId, 'photos'), getSetting(req.companyId, 'assignment')]);
+  const [outcomes, photos, assignment, general] = await Promise.all([getSetting(req.companyId, 'outcomes'), getSetting(req.companyId, 'photos'), getSetting(req.companyId, 'assignment'), getSetting(req.companyId, 'general')]);
+  const d0 = businessToday(general.dayStartHour);
   const cps = rows(await db.execute(sql`SELECT c.id, c.name FROM staff_compounds sc JOIN compounds c ON c.id = sc.compound_id WHERE sc.user_id = ${req.user.id} ORDER BY c.name`));
-  res.json({ user: { id: req.user.id, name: req.user.name }, company: { name: company.name, nameAr: company.nameAr, language: company.language }, compounds: cps, outcomes, photos: { minBefore: photos.minBeforePhotos, minAfter: photos.minAfterPhotos, maxMb: photos.maxPhotoSizeMb }, pool: assignment.publishUnassignedToPool !== false, today: today(), tomorrow: addDays(today(), 1) });
+  res.json({ user: { id: req.user.id, name: req.user.name }, company: { name: company.name, nameAr: company.nameAr, language: company.language }, compounds: cps, outcomes, photos: { minBefore: photos.minBeforePhotos, minAfter: photos.minAfterPhotos, maxMb: photos.maxPhotoSizeMb }, pool: assignment.publishUnassignedToPool !== false, today: d0, tomorrow: addDays(d0, 1), dayStartHour: general.dayStartHour });
 }));
 
 const taskSelect = (where) => sql`
@@ -63,7 +65,7 @@ const taskSelect = (where) => sql`
 
 // Today + tomorrow only: my tasks and (optionally) the unassigned pool of my compounds
 router.get('/tasks', wrap(async (req, res) => {
-  const d0 = today(), d1 = addDays(d0, 1);
+  const d0 = await bizToday(req.companyId), d1 = addDays(d0, 1);
   const assignment = await getSetting(req.companyId, 'assignment');
   const poolSql = assignment.publishUnassignedToPool !== false ? sql`OR (t.assigned_to IS NULL AND t.is_published = true AND t.compound_id IN (SELECT compound_id FROM staff_compounds WHERE user_id = ${req.user.id}))` : sql``;
   const list = rows(await db.execute(taskSelect(sql`t.company_id = ${req.companyId} AND t.scheduled_date IN (${d0}, ${d1}) AND t.status <> 'cancelled' AND (t.assigned_to = ${req.user.id} ${poolSql})`)));
@@ -76,7 +78,7 @@ async function loadTask(req, id) {
   return task;
 }
 const ensureMine = (task, req) => { if (task.assigned_to !== req.user.id) throw forbidden('This task is assigned to someone else'); };
-const ensureToday = (task) => { if (task.date !== today()) throw badRequest(task.date > today() ? 'This task is for tomorrow – it can be started tomorrow' : 'This task date has passed'); };
+const ensureToday = async (task, req) => { const d = await bizToday(req.companyId); if (task.date !== d) throw badRequest(task.date > d ? 'This task is for the next day – it can be started then' : 'This task date has passed'); };
 
 router.post('/tasks/:id/claim', wrap(async (req, res) => {
   const task = await loadTask(req, req.params.id);
@@ -101,7 +103,7 @@ async function savePhotos(t, operationId, phase, files, when) {
 // Start: before photos (≥ minBefore) → operation row with start_time (the timer), task in_progress
 router.post('/tasks/:id/start', photosField, wrap(async (req, res) => {
   try {
-    const task = await loadTask(req, req.params.id); ensureMine(task, req); ensureToday(task);
+    const task = await loadTask(req, req.params.id); ensureMine(task, req); await ensureToday(task, req);
     if (['completed', 'skipped'].includes(task.status)) throw conflict('This task is already closed');
     const photos = await getSetting(req.companyId, 'photos');
     const have = (task.photos || []).filter((p) => p.phase === 'before').length + (req.files?.length || 0);
@@ -165,7 +167,7 @@ router.post('/tasks/:id/finish', photosField, wrap(async (req, res) => {
 router.post('/tasks/:id/outcome', photosField, wrap(async (req, res) => {
   try {
     const { outcome, note } = z.object({ outcome: z.string().min(1).max(30), note: z.string().max(500).optional() }).parse(req.body);
-    const task = await loadTask(req, req.params.id); ensureMine(task, req); ensureToday(task);
+    const task = await loadTask(req, req.params.id); ensureMine(task, req); await ensureToday(task, req);
     if (task.status === 'completed') throw conflict('Already completed');
     const outcomes = await getSetting(req.companyId, 'outcomes');
     const def = outcomes.find((o) => o.key === outcome);
@@ -181,7 +183,7 @@ router.post('/tasks/:id/outcome', photosField, wrap(async (req, res) => {
       if (def.consumesQuota) { const [locked] = await t.select().from(subscriptions).where(eq(subscriptions.id, full.subscriptionId)).for('update'); if (locked.washesUsed < locked.washesAllowed) { await t.update(subscriptions).set({ washesUsed: locked.washesUsed + 1, updatedAt: now }).where(eq(subscriptions.id, locked.id)); await t.update(washingOperations).set({ quotaConsumed: true }).where(eq(washingOperations.id, opId)); } }
       await t.update(washingTasks).set({ status: 'skipped', outcome, outcomeNote: note || null, updatedAt: now }).where(eq(washingTasks.id, task.id));
       if (outcome === 'postponed') { // same washer gets the car tomorrow (unless a task already exists)
-        const tmr = addDays(today(), 1);
+        const tmr = addDays(await bizToday(req.companyId), 1);
         const dup = await t.query.washingTasks.findFirst({ where: and(eq(washingTasks.vehicleId, task.vehicle_id), eq(washingTasks.scheduledDate, tmr), sql`${washingTasks.status} <> 'cancelled'`) });
         if (!dup) { const taskCode = await nextCode(req.companyId, 'task', 'TSK', t); await t.insert(washingTasks).values({ companyId: req.companyId, taskCode, compoundId: full.compoundId, vehicleId: full.vehicleId, subscriptionId: full.subscriptionId, scheduledDate: tmr, assignedTo: req.user.id, isPublished: false, status: 'assigned', assignedBy: 'admin', createdBy: req.user.id }); }
       }

@@ -90,7 +90,8 @@ function TaskRow({ task, staffOptions, onMove, onCancel, canManage, t, dragging,
   );
 }
 
-function StaffTile({ title, subtitle, count, done, active, off, onClick, onDropTask, icon }) {
+function StaffTile({ title, subtitle, count, done, capacity, active, off, onClick, onDropTask, icon }) {
+  const over_cap = capacity && count > capacity;
   const [over, setOver] = useState(false);
   return (
     <button onClick={onClick} onDragOver={(e) => { if (onDropTask) { e.preventDefault(); setOver(true); } }} onDragLeave={() => setOver(false)} onDrop={(e) => { e.preventDefault(); setOver(false); onDropTask?.(); }}
@@ -98,7 +99,7 @@ function StaffTile({ title, subtitle, count, done, active, off, onClick, onDropT
       <div className="flex items-center gap-2">
         {icon}
         <div className="min-w-0 flex-1"><p className="text-sm font-semibold truncate">{title}</p>{subtitle && <p className={`text-[11px] truncate ${active ? 'text-white/70' : 'text-slate-500'}`}>{subtitle}</p>}</div>
-        <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${active ? 'bg-white/20' : done === count && count ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>{done !== undefined && count ? `${done}/` : ''}{count}</span>
+        <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${active ? 'bg-white/20' : done === count && count ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>{done !== undefined && count ? `${done}/` : ''}{count}{capacity ? <span className={`font-normal ${over_cap ? 'text-red-600' : 'opacity-60'}`}> / {capacity}</span> : null}</span>
       </div>
       {count > 0 && done !== undefined && <div className={`mt-1.5 h-1 rounded-full ${active ? 'bg-white/20' : 'bg-slate-100'} overflow-hidden`}><div className="h-full bg-emerald-500" style={{ width: `${(done / count) * 100}%` }} /></div>}
     </button>
@@ -124,13 +125,14 @@ function DayLoadCard({ compoundId, canManage }) {
 export default function Operations() {
   const { t, lang } = useI18n(); const { can } = useAuth(); const toast = useToast(); const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const date = params.get('date') || todayISO(); const compoundId = params.get('compoundId') || ''; const focus = params.get('staff') || '';
+  const date = params.get('date') || ''; const compoundId = params.get('compoundId') || ''; const focus = params.get('staff') || '';
   const setP = (patch) => { const n = new URLSearchParams(params); Object.entries(patch).forEach(([k, v]) => (v ? n.set(k, v) : n.delete(k))); setParams(n, { replace: true }); };
   const lookups = useLookups();
-  const { data, loading, error, reload } = useQuery('/admin/staff/board', { date, compoundId });
+  const { data, loading, error, reload } = useQuery('/admin/staff/board', { date: date || undefined, compoundId });
+  const shownDate = date || data?.today || todayISO();
   const [detail, setDetail] = useState(null); const [dragging, setDragging] = useState(null); const [cancel, setCancel] = useState(null); const [cancelBusy, setCancelBusy] = useState(false); const [adding, setAdding] = useState(false); const [distBusy, setDistBusy] = useState(false); const [showLoad, setShowLoad] = useState(false);
   const canManage = can('operations.manage');
-  const today = todayISO(), tomorrow = addDaysISO(today, 1);
+  const today = data?.today || todayISO(), tomorrow = addDaysISO(today, 1);
   const outcomes = useQuery('/admin/settings', {}, { enabled: can('settings.manage') });
   const outcomeLabel = (key) => { const o = (outcomes.data?.settings?.outcomes || []).find((x) => x.key === key); return o ? (lang === 'ar' ? o.labelAr : o.labelEn) : key; };
 
@@ -143,7 +145,7 @@ export default function Operations() {
   const totals = { total: tasks.length, done: tasks.filter((x) => x.status === 'completed').length, running: tasks.filter((x) => x.status === 'in_progress').length, skipped: tasks.filter((x) => x.status === 'skipped').length };
 
   const move = async (task, userId) => { try { await api.post(`/admin/staff/board/tasks/${task.id}/assign`, { userId }); reload(); } catch (e) { toast.error(e.message); } };
-  const distribute = async (cid) => { setDistBusy(true); try { const { data: r } = await api.post('/admin/staff/board/distribute', { date, compoundId: cid || undefined }); const a = r.reduce((s, x) => s + x.assigned, 0), p = r.reduce((s, x) => s + x.pooled, 0); toast.success(t('ops.distributed', { a, p })); reload(); } catch (e) { toast.error(e.message); } finally { setDistBusy(false); } };
+  const distribute = async (cid) => { setDistBusy(true); try { const { data: r } = await api.post('/admin/staff/board/distribute', { date: shownDate, compoundId: cid || undefined }); const a = r.reduce((s, x) => s + x.assigned, 0), p = r.reduce((s, x) => s + x.pooled, 0); toast.success(t('ops.distributed', { a, p })); reload(); } catch (e) { toast.error(e.message); } finally { setDistBusy(false); } };
   const doCancel = async (reason) => { setCancelBusy(true); try { await api.post(`/admin/staff/board/tasks/${cancel.id}/cancel`, { reason }); setCancel(null); reload(); } catch (e) { toast.error(e.message); } finally { setCancelBusy(false); } };
   const dropOn = (userId) => { const task = tasks.find((x) => x.id === dragging); setDragging(null); if (task && task.assigned_to !== userId) move(task, userId); };
 
@@ -161,9 +163,9 @@ export default function Operations() {
 
       <div className="card p-3 mb-4 flex flex-wrap items-center gap-2">
         <div className="flex rounded-lg border border-slate-300 overflow-hidden">
-          {[[today, t('common.today')], [tomorrow, t('ops.tomorrow')]].map(([d, label]) => <button key={d} onClick={() => setP({ date: d })} className={`px-3 py-1.5 text-sm font-medium ${date === d ? 'bg-navy-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>{label}</button>)}
+          {[[today, `${t('common.today')} · ${t('common.weekdays')[new Date(today + 'T00:00:00').getDay()]}`], [tomorrow, `${t('ops.tomorrow')} · ${t('common.weekdays')[new Date(tomorrow + 'T00:00:00').getDay()]}`]].map(([d, label]) => <button key={d} onClick={() => setP({ date: d })} className={`px-3 py-1.5 text-sm font-medium ${shownDate === d ? 'bg-navy-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>{label}</button>)}
         </div>
-        <Input type="date" value={date} onChange={(e) => setP({ date: e.target.value })} className="!w-auto" />
+        <Input type="date" value={shownDate} onChange={(e) => setP({ date: e.target.value })} className="!w-auto" />
         <Select value={compoundId} onChange={(e) => setP({ compoundId: e.target.value, staff: '' })} className="!w-auto"><option value="">{t('ops.allCompounds')}</option>{lookups.data?.compounds.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>
         <div className="ms-auto flex flex-wrap gap-2 text-xs">
           <span className="chip bg-slate-100 text-slate-700">{t('ops.tasks')}: <b>{totals.total}</b></span>
@@ -191,7 +193,7 @@ export default function Operations() {
             <StaffTile title={t('ops.all')} count={tasks.length} active={!focus} onClick={() => setP({ staff: '' })} />
             <StaffTile title={t('ops.pool')} subtitle={t('ops.poolHint')} count={pool.length} active={focus === 'pool'} onClick={() => setP({ staff: focus === 'pool' ? '' : 'pool' })} onDropTask={canManage ? () => dropOn(null) : null} icon={<Inbox size={16} className="text-slate-400" />} />
             {staff.map((s) => { const mine = byStaff(s.id); const off = s.on_leave || !s.works_today; return (
-              <StaffTile key={s.id} title={s.name} subtitle={s.on_leave ? t('staff.onLeave') : !s.works_today ? t('ops.dayOff') : s.employee_code} count={mine.length} done={doneOf(mine)} off={off} active={focus === s.id} onClick={() => setP({ staff: focus === s.id ? '' : s.id })} onDropTask={canManage ? () => dropOn(s.id) : null} icon={off ? <CalendarOff size={16} className="text-slate-400" /> : <UserRound size={16} className={focus === s.id ? 'text-white/80' : 'text-slate-400'} />} />); })}
+              <StaffTile key={s.id} title={s.name} subtitle={s.on_leave ? t('staff.onLeave') : !s.works_today ? t('ops.dayOff') : s.employee_code} count={mine.length} done={doneOf(mine)} capacity={s.daily_capacity || data?.defaultCapacity} off={off} active={focus === s.id} onClick={() => setP({ staff: focus === s.id ? '' : s.id })} onDropTask={canManage ? () => dropOn(s.id) : null} icon={off ? <CalendarOff size={16} className="text-slate-400" /> : <UserRound size={16} className={focus === s.id ? 'text-white/80' : 'text-slate-400'} />} />); })}
             {!staff.length && <button className="btn-secondary btn-sm w-full" onClick={() => navigate('/staff')}>{t('ops.noStaff')} →</button>}
           </aside>
 
@@ -216,7 +218,7 @@ export default function Operations() {
         <ul className="text-xs text-slate-600 space-y-1">{data.runs.map((r) => <li key={r.id}>{fmtDateTime(r.createdAt)} · <b>{t(`ops.trigger.${r.trigger}`)}</b>{r.compound_name && ` · ${r.compound_name}`}{r.summary?.assigned !== undefined && ` · ${r.summary.eligible} → ${r.summary.assigned} ${t('ops.assignedN')}${r.summary.pooled ? `, ${r.summary.pooled} ${t('ops.pool').toLowerCase()}` : ''}`}{r.summary?.moved && ` · ${t('staff.movedTasks', { n: r.summary.total })}`}</li>)}</ul></div>}
 
       {detail && <TaskDetailModal taskId={detail} onClose={() => setDetail(null)} outcomeLabel={outcomeLabel} />}
-      {adding && <AddTaskModal date={date} staff={staff} onClose={() => setAdding(false)} onSaved={reload} />}
+      {adding && <AddTaskModal date={shownDate} staff={staff} onClose={() => setAdding(false)} onSaved={reload} />}
       <ConfirmDialog open={!!cancel} onClose={() => setCancel(null)} onConfirm={doCancel} loading={cancelBusy} danger title={t('ops.cancelTask')} message={cancel && `${cancel.plate_number} · ${cancel.unit_number}`} reasonLabel={t('common.reason')} confirmLabel={t('common.confirm')} />
     </div>
   );

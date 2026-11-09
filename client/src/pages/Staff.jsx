@@ -9,13 +9,13 @@ import { PageHeader, DataTable, Modal, Field, Input, Spinner, useToast, Toggle, 
 
 function StaffForm({ open, onClose, initial, onSaved }) {
   const { t } = useI18n(); const toast = useToast(); const lookups = useLookups();
-  const [form, setForm] = useState({ name: initial?.name || '', mobile: initial?.mobile || '', employeeCode: initial?.employee_code || '', pin: '', compoundIds: (initial?.compounds || []).map((c) => c.id), workDays: initial?.work_days || [6, 0, 1, 2, 3, 4], isActive: initial?.is_active ?? true });
+  const [form, setForm] = useState({ name: initial?.name || '', mobile: initial?.mobile || '', employeeCode: initial?.employee_code || '', pin: '', compoundIds: (initial?.compounds || []).map((c) => c.id), workDays: initial?.work_days || [6, 0, 1, 2, 3, 4], isActive: initial?.is_active ?? true, workHoursPerDay: initial?.work_hours_per_day ?? '', dailyCapacity: initial?.daily_capacity ?? '' });
   const [busy, setBusy] = useState(false); const [error, setError] = useState(null);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const submit = async (e) => {
     e.preventDefault(); setBusy(true); setError(null);
     try {
-      const payload = { ...form, mobile: form.mobile || null }; if (!payload.pin) delete payload.pin;
+      const payload = { ...form, mobile: form.mobile || null, workHoursPerDay: form.workHoursPerDay === '' ? null : Number(form.workHoursPerDay), dailyCapacity: form.dailyCapacity === '' ? null : Number(form.dailyCapacity) }; if (!payload.pin) delete payload.pin;
       if (initial?.id) await api.put(`/admin/staff/${initial.id}`, payload); else await api.post('/admin/staff', payload);
       toast.success(t('common.success')); onSaved?.(); onClose();
     } catch (err) { setError(err.message); } finally { setBusy(false); }
@@ -28,6 +28,8 @@ function StaffForm({ open, onClose, initial, onSaved }) {
         <Field label={t('common.mobile')}><Input dir="ltr" value={form.mobile} onChange={set('mobile')} /></Field>
         <Field label={t('users.employeeCode')} required hint={t('staff.codeHint')}><Input required dir="ltr" value={form.employeeCode} onChange={set('employeeCode')} /></Field>
         <Field label={initial?.id ? t('staff.newPin') : t('staff.pin')} required={!initial?.id} hint={t('staff.pinHint')}><Input dir="ltr" inputMode="numeric" pattern="\d{4,6}" required={!initial?.id} value={form.pin} onChange={set('pin')} autoComplete="off" /></Field>
+        <Field label={t('staff.hoursPerDay')}><Input type="number" min="0" max="24" step="0.5" dir="ltr" value={form.workHoursPerDay} onChange={set('workHoursPerDay')} placeholder="8" /></Field>
+        <Field label={t('staff.capacity')} hint={t('staff.capacityHint')}><Input type="number" min="1" max="500" dir="ltr" value={form.dailyCapacity} onChange={set('dailyCapacity')} placeholder="32" /></Field>
         <Field label={t('staff.workDays')} className="sm:col-span-2"><DaysPicker value={form.workDays} onChange={(v) => setForm({ ...form, workDays: v })} /></Field>
         <Field label={t('users.compounds')} className="sm:col-span-2"><div className="flex flex-wrap gap-2">{lookups.data?.compounds.map((c) => { const on = form.compoundIds.includes(c.id); return <button type="button" key={c.id} onClick={() => setForm({ ...form, compoundIds: on ? form.compoundIds.filter((x) => x !== c.id) : [...form.compoundIds, c.id] })} className={`btn btn-sm ${on ? 'bg-navy-900 text-white' : 'btn-secondary'}`}>{c.name}</button>; })}</div></Field>
         <div className="sm:col-span-2"><Toggle checked={form.isActive} onChange={(v) => setForm({ ...form, isActive: v })} label={t('common.active')} /></div>
@@ -82,6 +84,7 @@ export default function Staff() {
     { key: 'work_days', header: t('staff.workDays'), render: (r) => <div className="flex gap-0.5">{[6, 0, 1, 2, 3, 4, 5].map((d) => <span key={d} className={`rounded px-1 text-[10px] ${r.work_days.includes(d) ? 'bg-navy-900 text-white' : 'bg-slate-100 text-slate-400'}`}>{days[d].slice(0, 2)}</span>)}</div> },
     { key: 'status', header: t('staff.status'), render: (r) => !r.is_active ? <StatusBadge status="inactive" /> : r.on_leave_today ? <StatusBadge status="suspended" label={t('staff.onLeave')} /> : <StatusBadge status="active" /> },
     { key: 'today', header: t('staff.today'), render: (r) => <span className="text-sm">{r.done_today}/{r.tasks_today}</span> },
+    { key: 'capacity', header: t('staff.capacity'), render: (r) => <span className="text-sm" dir="ltr">{r.daily_capacity ?? '—'}{r.work_hours_per_day ? <span className="text-xs text-slate-400"> · {Number(r.work_hours_per_day)}h</span> : null}</span> },
     { key: 'pin', header: t('staff.pin'), render: (r) => <span className={`inline-flex items-center gap-1 text-xs whitespace-nowrap ${r.has_pin ? 'text-emerald-700' : 'text-red-600'}`}><KeyRound size={12} />{r.has_pin ? t('staff.pinSet') : t('staff.pinMissing')}</span> },
     { key: 'actions', header: '', render: (r) => can('staff.manage') && <div className="flex justify-end gap-1">
       {r.is_active && !r.on_leave_today && <button className="btn-secondary btn-sm text-red-700" onClick={(e) => { e.stopPropagation(); setAbsent(r); }} title={t('staff.absentToday')}><UserX size={14} />{t('staff.absentToday')}</button>}

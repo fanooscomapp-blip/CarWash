@@ -40,6 +40,14 @@ export function daysBetween(fromStr, toStr) {
 }
 
 // Calendar date in the business timezone (not UTC) – e.g. 01:00 in Cairo is still "today" there while UTC is still yesterday
+/** Business date: the calendar date in the company timezone after shifting back `dayStartHour` hours,
+ *  so a night shift that runs past midnight still belongs to the day it started (Monday 23:00 → 01:30 = Monday). */
+export const businessToday = (dayStartHour = 0, now = new Date()) => {
+  const shifted = new Date(now.getTime() - Number(dayStartHour || 0) * 3600 * 1000);
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: config.timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(shifted);
+  const get = (t) => parts.find((p) => p.type === t).value;
+  return `${get('year')}-${get('month')}-${get('day')}`;
+};
 export const today = () => {
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: config.timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
   const get = (t) => parts.find((p) => p.type === t).value;

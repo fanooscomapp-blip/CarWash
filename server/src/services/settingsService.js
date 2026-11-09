@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm';
 import { db, schema } from '../db/index.js';
 
 export const SETTING_DEFAULTS = {
-  general: { expiringSoonDays: 7, defaultWashingDays: [6, 0, 1, 2, 3, 4], weekStartsOn: 6 },
+  general: { expiringSoonDays: 7, defaultWashingDays: [6, 0, 1, 2, 3, 4], weekStartsOn: 6, dayStartHour: 6 },
   // Payment collection: InstaPay (default for Egypt). Shown to owners on the renewal page.
   payment: { method: 'instapay', instapayAddress: '', instapayName: '', instapayLink: '', instructions: '', instructionsAr: '' },
   bank: { bankName: '', accountName: '', accountNumber: '', iban: '', instructions: '' },
@@ -12,7 +12,7 @@ export const SETTING_DEFAULTS = {
   otp: { length: 6, expiryMinutes: 5, maxAttempts: 5, resendCooldownSeconds: 60 },
   photos: { minBeforePhotos: 1, minAfterPhotos: 1, maxPhotoSizeMb: 8 },
   // Daily distribution: run at `assignHour` (0-23, business TZ) for the next day; fairness: even split, prefer last washer
-  assignment: { enabled: true, assignHour: 20, preferLastWasher: true, maxPerStaffPerDay: 0, publishUnassignedToPool: true },
+  assignment: { enabled: true, assignHour: 20, preferLastWasher: true, maxPerStaffPerDay: 0, defaultCapacity: 32, publishUnassignedToPool: true },
   // Outcomes staff can pick instead of washing (key, icon, counts against quota?)
   outcomes: [
     { key: 'not_found', icon: 'car-off', labelAr: 'السيارة غير موجودة', labelEn: 'Car not found', consumesQuota: false, requiresPhoto: false },

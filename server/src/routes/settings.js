@@ -32,7 +32,7 @@ router.put('/company', requirePermission('settings.manage'), wrap(async (req, re
 }));
 
 const sectionSchemas = {
-  general: z.object({ expiringSoonDays: z.coerce.number().int().min(1).max(90), defaultWashingDays: z.array(z.number().int().min(0).max(6)).min(1), weekStartsOn: z.number().int().min(0).max(6) }),
+  general: z.object({ expiringSoonDays: z.coerce.number().int().min(1).max(90), defaultWashingDays: z.array(z.number().int().min(0).max(6)).min(1), weekStartsOn: z.number().int().min(0).max(6), dayStartHour: z.coerce.number().int().min(0).max(12).optional().default(6) }),
   bank: z.object({ bankName: z.string().max(200), accountName: z.string().max(200), accountNumber: z.string().max(60), iban: z.string().max(60), instructions: z.string().max(2000) }),
   payment: z.object({ method: z.enum(['instapay', 'bank', 'cash_only']), instapayAddress: z.string().max(120), instapayName: z.string().max(120), instapayLink: z.string().max(300).optional().default(''), instructions: z.string().max(1000), instructionsAr: z.string().max(1000) }),
   sms: z.object({ provider: z.enum(['none', 'smsmisr', 'generic']), username: z.string().max(200).optional().default(''), password: z.string().max(200).optional().default(''), senderId: z.string().max(200).optional().default(''), environment: z.enum(['live', 'test']).optional().default('live'), apiUrl: z.string().max(500).optional().default(''), apiKey: z.string().max(500).optional().default(''), defaultLang: z.enum(['ar', 'en']).optional().default('ar') }),
@@ -41,7 +41,7 @@ const sectionSchemas = {
   photos: z.object({ minBeforePhotos: z.coerce.number().int().min(1).max(10), minAfterPhotos: z.coerce.number().int().min(1).max(10), maxPhotoSizeMb: z.coerce.number().int().min(1).max(50) }),
   notifications: z.object({ expiryReminderDays: z.array(z.number().int().min(1).max(60)), sendOnExpiry: z.boolean(), postExpiryReminderDays: z.array(z.number().int().min(1).max(60)), notifyAdminOnPendingPayment: z.boolean(), notifyAdminOnIssue: z.boolean(), smsOnPaymentApproved: z.boolean(), smsOnPaymentRejected: z.boolean(), smsOnWashCompleted: z.boolean() }),
   paymentMethods: z.array(z.string().min(1).max(40)).min(1),
-  assignment: z.object({ enabled: z.boolean(), assignHour: z.coerce.number().int().min(0).max(23), preferLastWasher: z.boolean(), maxPerStaffPerDay: z.coerce.number().int().min(0).max(200), publishUnassignedToPool: z.boolean() }),
+  assignment: z.object({ enabled: z.boolean(), assignHour: z.coerce.number().int().min(0).max(23), preferLastWasher: z.boolean(), maxPerStaffPerDay: z.coerce.number().int().min(0).max(200), defaultCapacity: z.coerce.number().int().min(1).max(500).optional().default(32), publishUnassignedToPool: z.boolean() }),
   outcomes: z.array(z.object({ key: z.string().min(1).max(30).regex(/^[a-z_]+$/), icon: z.string().max(30), labelAr: z.string().min(1).max(100), labelEn: z.string().min(1).max(100), consumesQuota: z.boolean(), requiresPhoto: z.boolean() })).min(1).max(12),
 };
 

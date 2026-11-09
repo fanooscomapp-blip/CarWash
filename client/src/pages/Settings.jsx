@@ -51,6 +51,7 @@ export default function SettingsPage() {
 
       <Section title={t('settings.general')} busy={busy.general} onSave={() => save('general', s.general)}>
         <Field label={t('settings.expiringSoonDays')}><Input type="number" min="1" max="90" value={s.general.expiringSoonDays} onChange={(e) => upd('general', { expiringSoonDays: Number(e.target.value) })} /></Field>
+        <Field label={t('settings.dayStartHour')} hint={t('settings.dayStartHourHint')}><Input type="number" min="0" max="12" value={s.general.dayStartHour ?? 6} onChange={(e) => upd('general', { dayStartHour: Number(e.target.value) })} /></Field>
         <Field label={t('settings.weekStartsOn')}><Select value={s.general.weekStartsOn} onChange={(e) => upd('general', { weekStartsOn: Number(e.target.value) })}>{t('common.weekdays').map((d, i) => <option key={i} value={i}>{d}</option>)}</Select></Field>
         <Field label={t('settings.defaultWashingDays')} className="sm:col-span-2"><DaysPicker value={s.general.defaultWashingDays} onChange={(v) => upd('general', { defaultWashingDays: v })} /></Field>
       </Section>
@@ -118,6 +119,7 @@ export default function SettingsPage() {
       <Section title={t('settings.assignment')} busy={busy.assignment} onSave={() => save('assignment', s.assignment)}>
         <div className="sm:col-span-2"><Toggle checked={s.assignment.enabled} onChange={(v) => upd('assignment', { enabled: v })} label={t('settings.assignEnabled')} /></div>
         <Field label={t('settings.assignHour')} hint={t('settings.assignHourHint')}><Input type="number" min="0" max="23" value={s.assignment.assignHour} onChange={(e) => upd('assignment', { assignHour: Number(e.target.value) })} /></Field>
+        <Field label={t('settings.defaultCapacity')} hint={t('settings.defaultCapacityHint')}><Input type="number" min="1" max="500" value={s.assignment.defaultCapacity ?? 32} onChange={(e) => upd('assignment', { defaultCapacity: Number(e.target.value) })} /></Field>
         <Field label={t('settings.maxPerStaff')}><Input type="number" min="0" max="200" value={s.assignment.maxPerStaffPerDay} onChange={(e) => upd('assignment', { maxPerStaffPerDay: Number(e.target.value) })} /></Field>
         <div className="sm:col-span-2 flex flex-col gap-2 items-start">
           <Toggle checked={s.assignment.preferLastWasher} onChange={(v) => upd('assignment', { preferLastWasher: v })} label={t('settings.preferLastWasher')} />

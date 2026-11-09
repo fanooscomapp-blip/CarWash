@@ -11,9 +11,14 @@ const todayCairo = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Ca
   const staff = await j('GET', '/admin/staff', null, admin);
   assert.ok(staff.length >= 3 && staff.every((s) => s.has_pin && s.work_days.length)); step(`${staff.length} staff with PIN + work days`);
 
-  // Make every demo subscription allow every day so there is work to distribute
+  // Capacity: Mahmoud (EMP-002) can take only 1 car per day
+  const mahmoud = staff.find((s) => s.employee_code === 'EMP-002');
+  await j('PUT', `/admin/staff/${mahmoud.id}`, { dailyCapacity: 1, workHoursPerDay: 4 }, admin);
+  assert.equal((await j('GET', '/admin/staff', null, admin)).find((s) => s.id === mahmoud.id).daily_capacity, 1); step('capacity saved (EMP-002 = 1 car/day)');
+
   const board0 = await j('GET', `/admin/staff/board?date=${tomorrow}`, null, admin);
   step(`board before: ${board0.tasks.length} tasks, eligible pending: ${JSON.stringify(board0.pendingEligible.map((p) => `${p.compoundName}:${p.count}`))}`);
+  for (const t of board0.tasks) await j('POST', `/admin/staff/board/tasks/${t.id}/cancel`, { reason: 'test reset' }, admin); // start from a clean day (seed has demo tasks)
   const dist = await j('POST', '/admin/staff/board/distribute', { date: tomorrow }, admin);
   const totalAssigned = dist.reduce((a, r) => a + r.assigned, 0), totalPooled = dist.reduce((a, r) => a + r.pooled, 0);
   step(`distributed tomorrow: ${dist.map((r) => `${r.compound}: ${r.eligible} eligible → ${r.assigned} assigned over ${r.staff} staff, ${r.pooled} pooled`).join(' | ')}`);
@@ -26,14 +31,19 @@ const todayCairo = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Ca
   // inside a compound, nobody with ≥2 more tasks than a colleague still holds a task of that compound that could move.
   for (const c of new Set(boardF.tasks.map((t) => t.compound_id))) {
     const team = boardF.staff.filter((s) => (s.compound_ids || []).includes(c) && s.works_today && !s.on_leave);
+    const capOf = (s) => s.daily_capacity || boardF.defaultCapacity || 1e6;
     for (const h of team) for (const l of team) {
       if (h.id === l.id) continue;
-      const diff = (perStaff[h.id] || 0) - (perStaff[l.id] || 0);
+      const lh = perStaff[h.id] || 0, ll = perStaff[l.id] || 0;
       const movable = boardF.tasks.some((t) => t.compound_id === c && t.assigned_to === h.id);
-      assert.ok(diff < 2 || !movable, `compound ${c}: ${h.name}=${perStaff[h.id]} could hand a task to ${l.name}=${perStaff[l.id] || 0}`);
+      if (!movable || ll >= capOf(l)) continue;
+      // utilisation-aware: a move is an improvement only if it lowers the pair's worst load÷capacity
+      const before = Math.max(lh / capOf(h), ll / capOf(l)), after = Math.max((lh - 1) / capOf(h), (ll + 1) / capOf(l));
+      assert.ok(after >= before - 1e-9, `compound ${c}: ${h.name}=${lh}/${capOf(h)} could hand a task to ${l.name}=${ll}/${capOf(l)}`);
     }
   }
-  step('fair split (no task could move to a less-loaded colleague in the same compound)');
+  assert.ok((perStaff[mahmoud.id] || 0) <= 1, 'capacity exceeded for EMP-002'); step(`capacity respected: ${mahmoud.name} has ${perStaff[mahmoud.id] || 0} task(s)`);
+  step('fair split (no move would lower the worst utilisation within a compound team)');
   const again = await j('POST', '/admin/staff/board/distribute', { date: tomorrow }, admin);
   assert.equal(again.reduce((a, r) => a + r.assigned + r.pooled, 0), 0); step('re-run is idempotent (no duplicates)');
   const board = await j('GET', `/admin/staff/board?date=${tomorrow}`, null, admin);

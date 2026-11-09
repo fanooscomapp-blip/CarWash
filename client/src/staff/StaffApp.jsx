@@ -16,6 +16,8 @@ function QueueProvider({ children }) {
 }
 const useQueue = () => useContext(QCtx);
 
+const dayName = (iso, lang) => new Intl.DateTimeFormat(lang === 'ar' ? 'ar-EG' : 'en-GB', { weekday: 'long' }).format(new Date(iso + 'T12:00:00'));
+const shortDate = (iso, lang) => new Intl.DateTimeFormat(lang === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { day: 'numeric', month: 'numeric' }).format(new Date(iso + 'T12:00:00'));
 const OUTCOME_ICON = { 'car-off': CarFront, lock: Lock, alert: AlertTriangle, calendar: CalendarClock };
 
 // ───────── Login ─────────
@@ -96,7 +98,7 @@ function TaskCard({ task, onClick, readOnly }) {
 
 // ───────── Home: today / tomorrow ─────────
 function HomePage() {
-  const { t, me } = useStaff(); const q = useQueue(); const nav = useNavigate();
+  const { t, me, lang } = useStaff(); const q = useQueue(); const nav = useNavigate();
   const [data, setData] = useState(null); const [day, setDay] = useState('today'); const [err, setErr] = useState(null);
   const load = useCallback(async () => { try { const { data: d } = await sapi.get('/tasks'); setData(d); setErr(null); } catch (e) { setErr(e); } }, []);
   useEffect(() => { load(); const i = setInterval(load, 60000); const vis = () => document.visibilityState === 'visible' && load(); document.addEventListener('visibilitychange', vis); return () => { clearInterval(i); document.removeEventListener('visibilitychange', vis); }; }, [load]);
@@ -109,10 +111,10 @@ function HomePage() {
   return (
     <Shell>
       <div className="grid grid-cols-2 gap-2 mb-3 rounded-2xl bg-white p-1.5 shadow-sm">
-        {[['today', data?.today], ['tomorrow', data?.tomorrow]].map(([k, d]) => <button key={k} onClick={() => setDay(k)} className={`rounded-xl py-3 text-lg font-bold flex items-center justify-center gap-2 ${day === k ? 'bg-navy-900 text-white' : 'text-slate-600'}`}>{t(k)}<span className={`rounded-full px-2 text-sm ${day === k ? 'bg-white/20' : 'bg-slate-100'}`}>{count(d)}</span></button>)}
+        {[['today', data?.today], ['tomorrow', data?.tomorrow]].map(([k, d]) => <button key={k} onClick={() => setDay(k)} className={`rounded-xl py-2.5 text-lg font-bold flex flex-col items-center justify-center leading-tight ${day === k ? 'bg-navy-900 text-white' : 'text-slate-600'}`}><span className="flex items-center gap-2">{d ? dayName(d, lang) : t(k)}<span className={`rounded-full px-2 text-sm ${day === k ? 'bg-white/20' : 'bg-slate-100'}`}>{count(d)}</span></span><span className={`text-xs font-medium ${day === k ? 'text-white/70' : 'text-slate-400'}`}>{d ? `${t(k)} · ${shortDate(d, lang)}` : ''}</span></button>)}
       </div>
       {day === 'today' && mine.length > 0 && <div className="mb-3 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-sm"><div className="flex-1 h-3 rounded-full bg-slate-100 overflow-hidden"><div className="h-full bg-emerald-500 transition-all" style={{ width: `${(doneCount / mine.length) * 100}%` }} /></div><span className="text-sm font-bold text-slate-700">{doneCount}/{mine.length} {t('done')}</span></div>}
-      {day === 'tomorrow' && <p className="mb-3 rounded-2xl bg-amber-50 border border-amber-200 px-4 py-2 text-sm text-amber-800">{t('tomorrowView')}</p>}
+      {day === 'tomorrow' && <p className="mb-3 rounded-2xl bg-amber-50 border border-amber-200 px-4 py-2 text-sm text-amber-800">{t('tomorrowView')}{data?.tomorrow ? ` — ${dayName(data.tomorrow, lang)}` : ''}</p>}
       {err && !data && <p className="text-center text-red-600 py-8">{t('error')}</p>}
       {data && !list.length && <div className="text-center py-16 text-slate-500"><CarFront size={48} className="mx-auto text-slate-300 mb-3" /><p className="text-lg font-semibold">{t('noTasks')}</p><p className="text-sm">{t('noTasksHint')}</p></div>}
       <div className="space-y-3">{mine.map((x) => <TaskCard key={x.id} task={x} readOnly={day === 'tomorrow'} onClick={() => nav(`/s/task/${x.id}`)} />)}</div>
@@ -139,8 +141,8 @@ function PhotoStrip({ photos = [], localUrls = [], onAdd, label, disabled }) {
 // ───────── Task detail + wash flow ─────────
 function TaskPage() {
   const { id } = useParams(); const { t, me, lang, user } = useStaff(); const q = useQueue(); const nav = useNavigate();
-  const [task, setTask] = useState(null); const [err, setErr] = useState(null); const [beforeFiles, setBeforeFiles] = useState([]); const [afterFiles, setAfterFiles] = useState([]); const [outcomeOpen, setOutcomeOpen] = useState(false); const [busy, setBusy] = useState(false); const [flash, setFlash] = useState('');
-  const load = useCallback(async () => { try { const { data } = await sapi.get('/tasks'); const found = data.tasks.find((x) => x.id === id); if (!found) { nav('/s', { replace: true }); return; } setTask(found); setErr(null); } catch (e) { setErr(e); } }, [id, nav]);
+  const [task, setTask] = useState(null); const [bizToday, setBizToday] = useState(null); const [err, setErr] = useState(null); const [beforeFiles, setBeforeFiles] = useState([]); const [afterFiles, setAfterFiles] = useState([]); const [outcomeOpen, setOutcomeOpen] = useState(false); const [busy, setBusy] = useState(false); const [flash, setFlash] = useState('');
+  const load = useCallback(async () => { try { const { data } = await sapi.get('/tasks'); setBizToday(data.today); const found = data.tasks.find((x) => x.id === id); if (!found) { nav('/s', { replace: true }); return; } setTask(found); setErr(null); } catch (e) { setErr(e); } }, [id, nav]);
   useEffect(() => { load(); }, [load]);
   useEffect(() => { if (q.pending === 0 && task) { load(); } }, [q.pending]); // eslint-disable-line react-hooks/exhaustive-deps
   const x = task ? statusOf(task, q.local[id]) : null;
@@ -150,7 +152,7 @@ function TaskPage() {
   useEffect(() => () => { [...urls.before, ...urls.after].forEach((u) => URL.revokeObjectURL(u)); }, [urls]);
   if (!x) return <Shell back="/s">{err ? <p className="text-center text-red-600 py-8">{t('error')}</p> : <div className="h-40 rounded-3xl bg-white animate-pulse" />}</Shell>;
 
-  const isToday = x.date === me?.today || (!me && true); const mine = x.assigned_to === user?.id; const pool = !x.assigned_to;
+  const isToday = x.date === (bizToday || me?.today); const mine = x.assigned_to === user?.id; const pool = !x.assigned_to;
   const havePhotos = (phase) => (x.photos || []).filter((p) => p.phase === phase).length;
   const canStart = isToday && mine && ['assigned', 'accepted'].includes(x.status) && beforeFiles.length + havePhotos('before') >= minBefore;
   const canFinish = isToday && mine && x.status === 'in_progress' && afterFiles.length + havePhotos('after') >= minAfter;

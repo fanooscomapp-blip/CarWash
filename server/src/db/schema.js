@@ -42,6 +42,8 @@ export const users = pgTable('users', {
   employeeCode: varchar('employee_code', { length: 40 }),
   pinHash: text('pin_hash'),                                   // staff portal: 4–6 digit PIN (employee code + PIN)
   workDays: jsonb('work_days').$type().default([0, 1, 2, 3, 4, 5, 6]).notNull(), // 0=Sun..6=Sat
+  workHoursPerDay: numeric('work_hours_per_day', { precision: 4, scale: 1 }), // informational (e.g. 8.5)
+  dailyCapacity: integer('daily_capacity'), // max cars per day for the distribution engine; null → settings default
   isActive: boolean('is_active').default(true).notNull(),
   dateJoined: date('date_joined'),
   lastLoginAt: ts('last_login_at'),

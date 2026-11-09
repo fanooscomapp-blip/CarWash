@@ -7,29 +7,32 @@ import { db, schema } from '../db/index.js';
 import { wrap, notFound, validationFailed, badRequest } from '../lib/errors.js';
 import { requirePermission } from '../middleware/auth.js';
 import { audit } from '../lib/audit.js';
-import { today, addDays, nextCode } from '../lib/util.js';
+import { businessToday, addDays, nextCode } from '../lib/util.js';
 import { reassignAbsent, distributeAll, distributeCompound, availableStaff, eligibleVehicles } from '../services/assignmentService.js';
 
+import { getSetting } from '../services/settingsService.js';
 const router = Router();
 const { users, staffLeaves, staffCompounds, washingTasks, roles, assignmentRuns } = schema;
 const rows = (r) => r.rows || r;
+const bizToday = async (companyId) => businessToday((await getSetting(companyId, 'general')).dayStartHour);
 
 // ───── Staff list with schedule, leaves, today's status ─────
 router.get('/', requirePermission('staff.view'), wrap(async (req, res) => {
+  const d = await bizToday(req.companyId);
   const list = rows(await db.execute(sql`
-    SELECT u.id, u.name, u.mobile, u.employee_code, u.is_active, u.work_days, u.date_joined, (u.pin_hash IS NOT NULL) AS has_pin,
+    SELECT u.id, u.name, u.mobile, u.employee_code, u.is_active, u.work_days, u.work_hours_per_day, u.daily_capacity, u.date_joined, (u.pin_hash IS NOT NULL) AS has_pin,
       (SELECT json_agg(json_build_object('id', c.id, 'name', c.name)) FROM staff_compounds sc JOIN compounds c ON c.id = sc.compound_id WHERE sc.user_id = u.id) AS compounds,
       (SELECT json_agg(json_build_object('id', l.id, 'startDate', l.start_date::text, 'endDate', l.end_date::text, 'reason', l.reason) ORDER BY l.start_date) FROM staff_leaves l WHERE l.user_id = u.id AND l.end_date >= CURRENT_DATE - 30) AS leaves,
-      EXISTS (SELECT 1 FROM staff_leaves l WHERE l.user_id = u.id AND CURRENT_DATE BETWEEN l.start_date AND l.end_date) AS on_leave_today,
-      (SELECT count(*) FROM washing_tasks t WHERE t.assigned_to = u.id AND t.scheduled_date = CURRENT_DATE AND t.status <> 'cancelled')::int AS tasks_today,
-      (SELECT count(*) FROM washing_tasks t WHERE t.assigned_to = u.id AND t.scheduled_date = CURRENT_DATE AND t.status = 'completed')::int AS done_today
+      EXISTS (SELECT 1 FROM staff_leaves l WHERE l.user_id = u.id AND ${d}::date BETWEEN l.start_date AND l.end_date) AS on_leave_today,
+      (SELECT count(*) FROM washing_tasks t WHERE t.assigned_to = u.id AND t.scheduled_date = ${d} AND t.status <> 'cancelled')::int AS tasks_today,
+      (SELECT count(*) FROM washing_tasks t WHERE t.assigned_to = u.id AND t.scheduled_date = ${d} AND t.status = 'completed')::int AS done_today
     FROM users u WHERE u.company_id = ${req.companyId} AND u.user_type = 'staff' ORDER BY u.is_active DESC, u.name`));
   res.json(list);
 }));
 
 const staffSchema = z.object({
   name: z.string().min(1).max(150), mobile: z.string().max(30).optional().nullable(), employeeCode: z.string().min(1).max(40),
-  pin: z.string().regex(/^\d{4,6}$/).optional(), compoundIds: z.array(z.string().uuid()).min(1), workDays: z.array(z.number().int().min(0).max(6)).min(1),
+  pin: z.string().regex(/^\d{4,6}$/).optional(), compoundIds: z.array(z.string().uuid()).min(1), workDays: z.array(z.number().int().min(0).max(6)).min(1), workHoursPerDay: z.coerce.number().min(0).max(24).optional().nullable(), dailyCapacity: z.coerce.number().int().min(1).max(500).optional().nullable(),
   isActive: z.boolean().optional(), dateJoined: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
 });
 
@@ -40,7 +43,7 @@ router.post('/', requirePermission('staff.manage'), wrap(async (req, res) => {
   const dup = await db.query.users.findFirst({ where: and(eq(users.companyId, req.companyId), eq(users.employeeCode, body.employeeCode)) });
   if (dup) throw badRequest(`Employee code ${body.employeeCode} is already used`);
   const row = await db.transaction(async (t) => {
-    const [u] = await t.insert(users).values({ companyId: req.companyId, roleId: role.id, name: body.name, email: `${body.employeeCode.toLowerCase().replace(/[^a-z0-9]/g, '')}@staff.local`, mobile: body.mobile || null, passwordHash: await bcrypt.hash(crypto.randomUUID(), 8), pinHash: await bcrypt.hash(body.pin, 8), userType: 'staff', employeeCode: body.employeeCode, workDays: body.workDays, isActive: body.isActive ?? true, dateJoined: body.dateJoined || today() }).returning();
+    const [u] = await t.insert(users).values({ companyId: req.companyId, roleId: role.id, name: body.name, email: `${body.employeeCode.toLowerCase().replace(/[^a-z0-9]/g, '')}@staff.local`, mobile: body.mobile || null, passwordHash: await bcrypt.hash(crypto.randomUUID(), 8), pinHash: await bcrypt.hash(body.pin, 8), userType: 'staff', employeeCode: body.employeeCode, workDays: body.workDays, workHoursPerDay: body.workHoursPerDay ?? null, dailyCapacity: body.dailyCapacity ?? null, isActive: body.isActive ?? true, dateJoined: body.dateJoined || await bizToday(req.companyId) }).returning();
     await t.insert(staffCompounds).values(body.compoundIds.map((compoundId) => ({ userId: u.id, compoundId })));
     await audit(req, { action: 'staff.create', entityType: 'user', entityId: u.id, after: { name: u.name, employeeCode: u.employeeCode, compoundIds: body.compoundIds, workDays: body.workDays } }, t);
     return u;
@@ -73,7 +76,7 @@ router.post('/:id/leaves', requirePermission('staff.manage'), wrap(async (req, r
   const [leave] = await db.insert(staffLeaves).values({ userId: u.id, startDate: body.startDate, endDate: body.endDate, reason: body.reason || null, createdBy: req.user.id }).returning();
   // Re-distribute already-assigned tasks on the leave days (today/tomorrow are the ones that typically exist)
   const moves = [];
-  for (let d = body.startDate; d <= body.endDate && d <= addDays(today(), 7); d = addDays(d, 1)) { const r = await reassignAbsent(req.companyId, u.id, d, { createdBy: req.user.id, reason: body.reason || 'leave' }); if (r.total) moves.push({ date: d, ...r }); }
+  for (let d = body.startDate; d <= body.endDate && d <= addDays(await bizToday(req.companyId), 7); d = addDays(d, 1)) { const r = await reassignAbsent(req.companyId, u.id, d, { createdBy: req.user.id, reason: body.reason || 'leave' }); if (r.total) moves.push({ date: d, ...r }); }
   await audit(req, { action: 'staff.leave_add', entityType: 'user', entityId: u.id, after: { ...body, moves } });
   res.status(201).json({ leave, moves });
 }));
@@ -90,7 +93,7 @@ router.delete('/:id/leaves/:leaveId', requirePermission('staff.manage'), wrap(as
 router.post('/:id/absent-today', requirePermission('staff.manage'), wrap(async (req, res) => {
   const u = await db.query.users.findFirst({ where: and(eq(users.id, req.params.id), eq(users.companyId, req.companyId)) });
   if (!u) throw notFound('Staff member');
-  const d = today();
+  const d = await bizToday(req.companyId);
   const exists = await db.query.staffLeaves.findFirst({ where: and(eq(staffLeaves.userId, u.id), sql`${d} BETWEEN ${staffLeaves.startDate} AND ${staffLeaves.endDate}`) });
   if (!exists) await db.insert(staffLeaves).values({ userId: u.id, startDate: d, endDate: d, reason: 'Absent (emergency)', createdBy: req.user.id });
   const r = await reassignAbsent(req.companyId, u.id, d, { createdBy: req.user.id, reason: 'absent' });
@@ -100,7 +103,7 @@ router.post('/:id/absent-today', requirePermission('staff.manage'), wrap(async (
 
 // ───── Assignment board ─────
 router.get('/board', requirePermission('operations.view'), wrap(async (req, res) => {
-  const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : today();
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : await bizToday(req.companyId);
   const compoundId = req.query.compoundId || null;
   const tasks = rows(await db.execute(sql`
     SELECT t.id, t.task_code, t.status, t.outcome, t.assigned_to, t.is_published, t.assigned_by, t.compound_id, c.name AS compound_name,
@@ -112,7 +115,7 @@ router.get('/board', requirePermission('operations.view'), wrap(async (req, res)
     WHERE t.company_id = ${req.companyId} AND t.scheduled_date = ${date} ${compoundId ? sql`AND t.compound_id = ${compoundId}` : sql``} AND t.status <> 'cancelled'
     ORDER BY c.name, v.plate_number`));
   const staff = rows(await db.execute(sql`
-    SELECT u.id, u.name, u.employee_code, u.work_days,
+    SELECT u.id, u.name, u.employee_code, u.work_days, u.daily_capacity,
       (SELECT json_agg(sc.compound_id) FROM staff_compounds sc WHERE sc.user_id = u.id) AS compound_ids,
       EXISTS (SELECT 1 FROM staff_leaves l WHERE l.user_id = u.id AND ${date} BETWEEN l.start_date AND l.end_date) AS on_leave,
       (u.work_days @> ${JSON.stringify([new Date(date + 'T00:00:00Z').getUTCDay()])}::jsonb) AS works_today
@@ -121,7 +124,8 @@ router.get('/board', requirePermission('operations.view'), wrap(async (req, res)
   // How many eligible vehicles are still without a task (per compound) – tells the admin whether to redistribute
   const cps = compoundId ? [{ id: compoundId }] : rows(await db.execute(sql`SELECT id, name FROM compounds WHERE company_id = ${req.companyId} AND status = 'active'`));
   const pending = []; for (const c of cps) { const e = await eligibleVehicles(req.companyId, c.id, date); if (e.length) pending.push({ compoundId: c.id, compoundName: c.name, count: e.length }); }
-  res.json({ date, tasks, staff, runs, pendingEligible: pending });
+  const cfg = await getSetting(req.companyId, 'assignment');
+  res.json({ date, today: await bizToday(req.companyId), tasks, staff, runs, pendingEligible: pending, defaultCapacity: cfg.defaultCapacity || null });
 }));
 
 // Task detail for the admin board: operation times, staff, photos (before/after), outcome

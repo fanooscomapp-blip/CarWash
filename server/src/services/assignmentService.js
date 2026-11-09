@@ -9,7 +9,7 @@
 import { and, eq, sql, inArray } from 'drizzle-orm';
 import { db, schema } from '../db/index.js';
 import { getSetting } from './settingsService.js';
-import { nextCode, today, addDays } from '../lib/util.js';
+import { nextCode, today, addDays, businessToday } from '../lib/util.js';
 import { systemAudit } from '../lib/audit.js';
 import { notifyAdmins } from './notificationService.js';
 
@@ -41,7 +41,7 @@ export async function eligibleVehicles(companyId, compoundId, date) {
 export async function availableStaff(companyId, compoundId, date) {
   const dow = weekday(date);
   return rows(await db.execute(sql`
-    SELECT u.id, u.name, u.employee_code,
+    SELECT u.id, u.name, u.employee_code, u.daily_capacity,
       (SELECT count(*) FROM washing_tasks t WHERE t.assigned_to = u.id AND t.scheduled_date = ${date} AND t.status <> 'cancelled')::int AS load
     FROM users u JOIN staff_compounds sc ON sc.user_id = u.id
     WHERE u.company_id = ${companyId} AND u.user_type = 'staff' AND u.is_active = true AND sc.compound_id = ${compoundId}
@@ -71,22 +71,24 @@ export async function distributeCompounds(companyId, compoundIds, date, { trigge
     const staff = await availableStaff(companyId, compoundId, date);
     staffByCompound[compoundId] = staff;
     staff.forEach((s) => { load[s.id] = s.load; names[s.id] = s.name; });
-    perCompound[compoundId] = { date, compoundId, eligible: vehicles.length, staff: staff.length, assigned: 0, pooled: 0, perStaff: {} };
+    perCompound[compoundId] = { date, compoundId, eligible: vehicles.length, staff: staff.length, assigned: 0, pooled: 0, perStaff: {}, capacity: 0 };
     vehicles.forEach((v) => queue.push({ compoundId, v }));
   }
   if (!queue.length) return Object.values(perCompound);
   // Round-robin across compounds so no compound is served entirely before another starts
   const byC = compoundIds.map((c) => queue.filter((q) => q.compoundId === c)); const ordered = []; let i = 0;
   while (ordered.length < queue.length) { const list = byC[i % byC.length]; if (list.length) ordered.push(list.shift()); i++; }
-  const cap = cfg.maxPerStaffPerDay || Infinity;
-  // 1) Greedy: global least-loaded candidate, last washer wins ties
+  // Capacity per worker: own daily_capacity, else the settings default; the global maxPerStaffPerDay (if set) caps both.
+  const capOf = {}; Object.values(staffByCompound).flat().forEach((s) => { capOf[s.id] = Math.min(s.daily_capacity || cfg.defaultCapacity || Infinity, cfg.maxPerStaffPerDay || Infinity); });
+  const ratio = (id) => load[id] / (capOf[id] === Infinity ? 1e6 : capOf[id]);
+  // 1) Greedy: least utilised candidate (load ÷ capacity), last washer wins ties
   const plan = [];
   for (const { compoundId, v } of ordered) {
-    const candidates = staffByCompound[compoundId].filter((s) => load[s.id] < cap);
+    const candidates = staffByCompound[compoundId].filter((s) => load[s.id] < capOf[s.id]);
     let pick = null;
     if (candidates.length) {
-      const minLoad = Math.min(...candidates.map((s) => load[s.id]));
-      const atMin = candidates.filter((s) => load[s.id] === minLoad);
+      const minR = Math.min(...candidates.map((s) => ratio(s.id)));
+      const atMin = candidates.filter((s) => Math.abs(ratio(s.id) - minR) < 1e-9);
       pick = (cfg.preferLastWasher && atMin.find((s) => s.id === v.last_staff_id)) || atMin[0];
     }
     if (pick) load[pick.id]++;
@@ -98,7 +100,9 @@ export async function distributeCompounds(companyId, compoundIds, date, { trigge
     for (const compoundId of compoundIds) {
       const team = staffByCompound[compoundId];
       for (const heavy of team) for (const light of team) {
-        if (heavy.id === light.id || load[heavy.id] - load[light.id] < 2 || load[light.id] >= cap) continue;
+        if (heavy.id === light.id || load[light.id] >= capOf[light.id]) continue;
+        // move only if it lowers the pair's worst utilisation
+        if (!(Math.max((load[heavy.id] - 1) / capOf[heavy.id], (load[light.id] + 1) / capOf[light.id]) < Math.max(ratio(heavy.id), ratio(light.id)) - 1e-9)) continue;
         const task = plan.find((p) => p.compoundId === compoundId && p.staffId === heavy.id && p.v.last_staff_id !== heavy.id) || plan.find((p) => p.compoundId === compoundId && p.staffId === heavy.id);
         if (!task) continue;
         task.staffId = light.id; load[heavy.id]--; load[light.id]++; moved = true;
@@ -114,7 +118,11 @@ export async function distributeCompounds(companyId, compoundIds, date, { trigge
     }
     for (const sum of Object.values(perCompound)) if (sum.eligible) await t.insert(assignmentRuns).values({ companyId, compoundId: sum.compoundId, forDate: date, trigger, summary: sum, createdBy });
   });
-  for (const sum of Object.values(perCompound)) if (sum.pooled && !sum.staff) await notifyAdmins(companyId, { type: 'assignment.no_staff', title: `No staff available for ${date}`, body: `${sum.pooled} vehicle(s) waiting in the pool`, entityType: 'compound', entityId: sum.compoundId });
+  for (const sum of Object.values(perCompound)) {
+    sum.capacity = staffByCompound[sum.compoundId].reduce((a, s) => a + (capOf[s.id] === Infinity ? 0 : capOf[s.id]), 0);
+    if (sum.pooled && !sum.staff) await notifyAdmins(companyId, { type: 'assignment.no_staff', title: `No staff available for ${date}`, body: `${sum.pooled} vehicle(s) waiting in the pool`, entityType: 'compound', entityId: sum.compoundId });
+    else if (sum.pooled) await notifyAdmins(companyId, { type: 'assignment.over_capacity', title: `Capacity exceeded for ${date}`, body: `${sum.pooled} vehicle(s) could not be assigned – all staff at capacity`, entityType: 'compound', entityId: sum.compoundId });
+  }
   return Object.values(perCompound);
 }
 
@@ -140,7 +148,9 @@ export async function reassignAbsent(companyId, userId, date, { createdBy = null
     const load = Object.fromEntries(staff.map((s) => [s.id, s.load]));
     for (const task of list) {
       let pick = null;
-      if (staff.length) { const min = Math.min(...staff.map((s) => load[s.id])); pick = staff.find((s) => load[s.id] === min); }
+      const cfgA = await getSetting(companyId, 'assignment'); const capA = (s) => Math.min(s.daily_capacity || cfgA.defaultCapacity || Infinity, cfgA.maxPerStaffPerDay || Infinity);
+      const open = staff.filter((s) => load[s.id] < capA(s));
+      if (open.length) { const min = Math.min(...open.map((s) => load[s.id] / (capA(s) === Infinity ? 1e6 : capA(s)))); pick = open.find((s) => Math.abs(load[s.id] / (capA(s) === Infinity ? 1e6 : capA(s)) - min) < 1e-9); }
       await db.update(washingTasks).set({ assignedTo: pick?.id || null, isPublished: !pick, assignedBy: 'absence', updatedAt: new Date() }).where(eq(washingTasks.id, task.id));
       if (pick) { load[pick.id]++; moved[pick.name] = (moved[pick.name] || 0) + 1; } else pooled++;
     }
@@ -158,7 +168,7 @@ export async function runScheduledAssignment(nowHour) {
   for (const { id } of cos) {
     const cfg = await getSetting(id, 'assignment');
     if (!cfg.enabled || Number(cfg.assignHour) !== nowHour) continue;
-    const tomorrow = addDays(today(), 1);
+    const tomorrow = addDays(businessToday((await getSetting(id, 'general')).dayStartHour), 1);
     const already = await db.query.assignmentRuns.findFirst({ where: and(eq(assignmentRuns.companyId, id), eq(assignmentRuns.forDate, tomorrow), eq(assignmentRuns.trigger, 'scheduled')) });
     if (already) continue;
     await distributeAll(id, tomorrow, { trigger: 'scheduled' }).catch((e) => console.error('scheduled assignment failed', e));
