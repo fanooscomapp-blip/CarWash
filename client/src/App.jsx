@@ -21,6 +21,8 @@ import SubscriptionNew from './pages/SubscriptionNew.jsx';
 import Renewals from './pages/Renewals.jsx';
 import Payments from './pages/Payments.jsx';
 import UsersRoles from './pages/UsersRoles.jsx';
+import Staff from './pages/Staff.jsx';
+import Operations from './pages/Operations.jsx';
 import SettingsPage from './pages/Settings.jsx';
 import AuditLogs from './pages/AuditLogs.jsx';
 import PortalApp from './portal/PortalApp.jsx';
@@ -64,8 +66,8 @@ export default function App() {
         <Route path="renewals" element={<Renewals />} />
         <Route path="registration-requests" element={<RegistrationRequests />} />
         <Route path="payments" element={<Payments />} />
-        <Route path="operations" element={<Soon phase={3} />} />
-        <Route path="staff" element={<Soon phase={3} />} />
+        <Route path="operations" element={<Operations />} />
+        <Route path="staff" element={<Staff />} />
         <Route path="sms" element={<SmsCenter />} />
         <Route path="reports" element={<Soon phase={2} />} />
         <Route path="users" element={<UsersRoles />} />

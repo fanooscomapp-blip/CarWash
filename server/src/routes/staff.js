@@ -117,7 +117,7 @@ router.get('/board', requirePermission('operations.view'), wrap(async (req, res)
       EXISTS (SELECT 1 FROM staff_leaves l WHERE l.user_id = u.id AND ${date} BETWEEN l.start_date AND l.end_date) AS on_leave,
       (u.work_days @> ${JSON.stringify([new Date(date + 'T00:00:00Z').getUTCDay()])}::jsonb) AS works_today
     FROM users u WHERE u.company_id = ${req.companyId} AND u.user_type = 'staff' AND u.is_active = true ORDER BY u.name`));
-  const runs = await db.select().from(assignmentRuns).where(and(eq(assignmentRuns.companyId, req.companyId), eq(assignmentRuns.forDate, date))).orderBy(desc(assignmentRuns.createdAt)).limit(5);
+  const runs = rows(await db.execute(sql`SELECT r.id, r.trigger, r.summary, r.created_at AS "createdAt", c.name AS compound_name FROM assignment_runs r LEFT JOIN compounds c ON c.id = r.compound_id WHERE r.company_id = ${req.companyId} AND r.for_date = ${date} ORDER BY r.created_at DESC LIMIT 8`));
   // How many eligible vehicles are still without a task (per compound) – tells the admin whether to redistribute
   const cps = compoundId ? [{ id: compoundId }] : rows(await db.execute(sql`SELECT id, name FROM compounds WHERE company_id = ${req.companyId} AND status = 'active'`));
   const pending = []; for (const c of cps) { const e = await eligibleVehicles(req.companyId, c.id, date); if (e.length) pending.push({ compoundId: c.id, compoundName: c.name, count: e.length }); }

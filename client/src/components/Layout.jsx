@@ -22,8 +22,8 @@ const NAV = [
     { to: '/registration-requests', icon: UserPlus, key: 'registrationRequests', perm: 'payments.view' },
     { to: '/payments?status=pending_verification', icon: Inbox, key: 'renewalRequests', perm: 'payments.view' },
     { to: '/payments', icon: CreditCard, key: 'payments', perm: 'payments.view' },
-    { to: '/operations', icon: Droplets, key: 'operations', perm: 'operations.view', soon: true },
-    { to: '/staff', icon: UserCog, key: 'staff', perm: 'staff.view', soon: true },
+    { to: '/operations', icon: Droplets, key: 'operations', perm: 'operations.view' },
+    { to: '/staff', icon: UserCog, key: 'staff', perm: 'staff.view' },
     { to: '/sms', icon: MessageSquare, key: 'sms', perm: 'sms.view' },
     { to: '/reports', icon: BarChart3, key: 'reports', perm: 'reports.view', soon: true },
   ] },
@@ -61,7 +61,7 @@ function Sidebar({ onNavigate }) {
           );
         })}
       </nav>
-      <div className="px-5 py-3 text-[11px] text-slate-400 border-t border-white/10">v1.0 · Phase 1</div>
+      <div className="px-5 py-3 text-[11px] text-slate-400 border-t border-white/10">v1.2 · Phase 3</div>
     </aside>
   );
 }

@@ -115,6 +115,33 @@ export default function SettingsPage() {
         <Field label={t('settings.maxPhotoSize')}><Input type="number" min="1" max="50" value={s.photos.maxPhotoSizeMb} onChange={(e) => upd('photos', { maxPhotoSizeMb: Number(e.target.value) })} /></Field>
       </Section>
 
+      <Section title={t('settings.assignment')} busy={busy.assignment} onSave={() => save('assignment', s.assignment)}>
+        <div className="sm:col-span-2"><Toggle checked={s.assignment.enabled} onChange={(v) => upd('assignment', { enabled: v })} label={t('settings.assignEnabled')} /></div>
+        <Field label={t('settings.assignHour')} hint={t('settings.assignHourHint')}><Input type="number" min="0" max="23" value={s.assignment.assignHour} onChange={(e) => upd('assignment', { assignHour: Number(e.target.value) })} /></Field>
+        <Field label={t('settings.maxPerStaff')}><Input type="number" min="0" max="200" value={s.assignment.maxPerStaffPerDay} onChange={(e) => upd('assignment', { maxPerStaffPerDay: Number(e.target.value) })} /></Field>
+        <div className="sm:col-span-2 flex flex-col gap-2 items-start">
+          <Toggle checked={s.assignment.preferLastWasher} onChange={(v) => upd('assignment', { preferLastWasher: v })} label={t('settings.preferLastWasher')} />
+          <Toggle checked={s.assignment.publishUnassignedToPool} onChange={(v) => upd('assignment', { publishUnassignedToPool: v })} label={t('settings.publishPool')} />
+        </div>
+      </Section>
+
+      <Section title={t('settings.outcomes')} busy={busy.outcomes} onSave={() => save('outcomes', s.outcomes)}>
+        <div className="sm:col-span-2 space-y-2">
+          <p className="text-xs text-slate-500">{t('settings.outcomesHint')}</p>
+          <div className="hidden sm:grid grid-cols-[1fr_1.4fr_1.4fr_auto_auto_auto] gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-1"><span>{t('settings.outcomeKey')}</span><span>{t('settings.outcomeLabelEn')}</span><span>{t('settings.outcomeLabelAr')}</span><span>{t('settings.outcomeQuota')}</span><span>{t('settings.outcomePhoto')}</span><span /></div>
+          {s.outcomes.map((o, i) => { const setO = (patch) => setS({ ...s, outcomes: s.outcomes.map((x, j) => (j === i ? { ...x, ...patch } : x)) }); return (
+            <div key={i} className="grid sm:grid-cols-[1fr_1.4fr_1.4fr_auto_auto_auto] gap-2 items-center rounded-lg border border-slate-200 p-2">
+              <Input dir="ltr" value={o.key} onChange={(e) => setO({ key: e.target.value.toLowerCase().replace(/[^a-z_]/g, '') })} placeholder="not_found" />
+              <Input value={o.labelEn} onChange={(e) => setO({ labelEn: e.target.value })} />
+              <Input value={o.labelAr} onChange={(e) => setO({ labelAr: e.target.value })} />
+              <Toggle checked={!!o.consumesQuota} onChange={(v) => setO({ consumesQuota: v })} />
+              <Toggle checked={!!o.requiresPhoto} onChange={(v) => setO({ requiresPhoto: v })} />
+              <button type="button" className="btn-secondary btn-sm text-red-600" disabled={s.outcomes.length <= 1} onClick={() => setS({ ...s, outcomes: s.outcomes.filter((_, j) => j !== i) })}>×</button>
+            </div>); })}
+          <button type="button" className="btn-secondary btn-sm" disabled={s.outcomes.length >= 12} onClick={() => setS({ ...s, outcomes: [...s.outcomes, { key: '', icon: 'alert', labelEn: '', labelAr: '', consumesQuota: false, requiresPhoto: false }] })}>{t('settings.addOutcome')}</button>
+        </div>
+      </Section>
+
       <Section title={t('settings.notifications')} busy={busy.notifications} onSave={() => save('notifications', s.notifications)}>
         <Field label={t('settings.reminderDays')} hint={t('settings.reminderDaysHint')}><Input dir="ltr" defaultValue={numList(s.notifications.expiryReminderDays)} onBlur={(e) => upd('notifications', { expiryReminderDays: parseList(e.target.value) })} /></Field>
         <Field label={t('settings.postExpiry')} hint={t('settings.commaHint')}><Input dir="ltr" defaultValue={numList(s.notifications.postExpiryReminderDays)} onBlur={(e) => upd('notifications', { postExpiryReminderDays: parseList(e.target.value) })} /></Field>
