@@ -12,7 +12,7 @@ import { reassignAbsent, distributeAll, distributeCompound, availableStaff, elig
 
 import { getSetting } from '../services/settingsService.js';
 const router = Router();
-const { users, staffLeaves, staffCompounds, washingTasks, roles, assignmentRuns } = schema;
+const { users, staffLeaves, staffCompounds, staffSchedule, washingTasks, roles, assignmentRuns } = schema;
 const rows = (r) => r.rows || r;
 const bizToday = async (companyId) => businessToday((await getSetting(companyId, 'general')).dayStartHour);
 
@@ -22,6 +22,8 @@ router.get('/', requirePermission('staff.view'), wrap(async (req, res) => {
   const list = rows(await db.execute(sql`
     SELECT u.id, u.name, u.mobile, u.employee_code, u.is_active, u.work_days, u.work_hours_per_day, u.daily_capacity, u.date_joined, (u.pin_hash IS NOT NULL) AS has_pin,
       (SELECT json_agg(json_build_object('id', c.id, 'name', c.name)) FROM staff_compounds sc JOIN compounds c ON c.id = sc.compound_id WHERE sc.user_id = u.id) AS compounds,
+      (SELECT json_agg(json_build_object('dow', ss.dow, 'compoundId', ss.compound_id, 'capacity', ss.capacity) ORDER BY ss.dow) FROM staff_schedule ss WHERE ss.user_id = u.id) AS schedule,
+      (SELECT coalesce(sum(ss.capacity), 0) FROM staff_schedule ss WHERE ss.user_id = u.id AND ss.dow = extract(dow FROM ${d}::date)::int)::int AS capacity_today,
       (SELECT json_agg(json_build_object('id', l.id, 'startDate', l.start_date::text, 'endDate', l.end_date::text, 'reason', l.reason) ORDER BY l.start_date) FROM staff_leaves l WHERE l.user_id = u.id AND l.end_date >= CURRENT_DATE - 30) AS leaves,
       EXISTS (SELECT 1 FROM staff_leaves l WHERE l.user_id = u.id AND ${d}::date BETWEEN l.start_date AND l.end_date) AS on_leave_today,
       (SELECT count(*) FROM washing_tasks t WHERE t.assigned_to = u.id AND t.scheduled_date = ${d} AND t.status <> 'cancelled')::int AS tasks_today,
@@ -32,9 +34,28 @@ router.get('/', requirePermission('staff.view'), wrap(async (req, res) => {
 
 const staffSchema = z.object({
   name: z.string().min(1).max(150), mobile: z.string().max(30).optional().nullable(), employeeCode: z.string().min(1).max(40),
-  pin: z.string().regex(/^\d{4,6}$/).optional(), compoundIds: z.array(z.string().uuid()).min(1), workDays: z.array(z.number().int().min(0).max(6)).min(1), workHoursPerDay: z.coerce.number().min(0).max(24).optional().nullable(), dailyCapacity: z.coerce.number().int().min(1).max(500).optional().nullable(),
+  pin: z.string().regex(/^\d{4,6}$/).optional(), compoundIds: z.array(z.string().uuid()).optional(), workDays: z.array(z.number().int().min(0).max(6)).optional(),
+  schedule: z.array(z.object({ dow: z.number().int().min(0).max(6), compoundId: z.string().uuid(), capacity: z.coerce.number().int().min(1).max(500) })).optional(), workHoursPerDay: z.coerce.number().min(0).max(24).optional().nullable(), dailyCapacity: z.coerce.number().int().min(1).max(500).optional().nullable(),
   isActive: z.boolean().optional(), dateJoined: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
 });
+
+/** Build the schedule cells from the body: explicit `schedule`, or legacy compoundIds × workDays with the daily capacity. */
+async function scheduleFrom(body, companyId) {
+  if (body.schedule) return body.schedule.filter((c) => c.capacity > 0);
+  if (body.compoundIds && body.workDays) { const cap = body.dailyCapacity || (await getSetting(companyId, 'assignment')).defaultCapacity || 32; return body.compoundIds.flatMap((compoundId) => body.workDays.map((dow) => ({ dow, compoundId, capacity: cap }))); }
+  return null;
+}
+/** Persist schedule cells and keep staff_compounds + users.work_days in sync. */
+async function saveSchedule(t, userId, cells) {
+  await t.delete(staffSchedule).where(eq(staffSchedule.userId, userId));
+  if (cells.length) await t.insert(staffSchedule).values(cells.map((c) => ({ userId, dow: c.dow, compoundId: c.compoundId, capacity: c.capacity })));
+  const compoundIds = [...new Set(cells.map((c) => c.compoundId))]; const workDays = [...new Set(cells.map((c) => c.dow))].sort();
+  await t.delete(staffCompounds).where(eq(staffCompounds.userId, userId));
+  if (compoundIds.length) await t.insert(staffCompounds).values(compoundIds.map((compoundId) => ({ userId, compoundId })));
+  const byDay = {}; cells.forEach((c) => { byDay[c.dow] = (byDay[c.dow] || 0) + c.capacity; });
+  await t.update(users).set({ workDays, dailyCapacity: Object.keys(byDay).length ? Math.max(...Object.values(byDay)) : null }).where(eq(users.id, userId));
+  return { compoundIds, workDays };
+}
 
 router.post('/', requirePermission('staff.manage'), wrap(async (req, res) => {
   const body = staffSchema.parse(req.body);
@@ -42,10 +63,12 @@ router.post('/', requirePermission('staff.manage'), wrap(async (req, res) => {
   const role = await db.query.roles.findFirst({ where: and(eq(roles.companyId, req.companyId), eq(roles.name, 'Car Wash Staff')) });
   const dup = await db.query.users.findFirst({ where: and(eq(users.companyId, req.companyId), eq(users.employeeCode, body.employeeCode)) });
   if (dup) throw badRequest(`Employee code ${body.employeeCode} is already used`);
+  const cells = await scheduleFrom(body, req.companyId);
+  if (!cells?.length) throw validationFailed('Add at least one working day with a compound');
   const row = await db.transaction(async (t) => {
-    const [u] = await t.insert(users).values({ companyId: req.companyId, roleId: role.id, name: body.name, email: `${body.employeeCode.toLowerCase().replace(/[^a-z0-9]/g, '')}@staff.local`, mobile: body.mobile || null, passwordHash: await bcrypt.hash(crypto.randomUUID(), 8), pinHash: await bcrypt.hash(body.pin, 8), userType: 'staff', employeeCode: body.employeeCode, workDays: body.workDays, workHoursPerDay: body.workHoursPerDay ?? null, dailyCapacity: body.dailyCapacity ?? null, isActive: body.isActive ?? true, dateJoined: body.dateJoined || await bizToday(req.companyId) }).returning();
-    await t.insert(staffCompounds).values(body.compoundIds.map((compoundId) => ({ userId: u.id, compoundId })));
-    await audit(req, { action: 'staff.create', entityType: 'user', entityId: u.id, after: { name: u.name, employeeCode: u.employeeCode, compoundIds: body.compoundIds, workDays: body.workDays } }, t);
+    const [u] = await t.insert(users).values({ companyId: req.companyId, roleId: role.id, name: body.name, email: `${body.employeeCode.toLowerCase().replace(/[^a-z0-9]/g, '')}@staff.local`, mobile: body.mobile || null, passwordHash: await bcrypt.hash(crypto.randomUUID(), 8), pinHash: await bcrypt.hash(body.pin, 8), userType: 'staff', employeeCode: body.employeeCode, workDays: body.workDays || [], workHoursPerDay: body.workHoursPerDay ?? null, dailyCapacity: body.dailyCapacity ?? null, isActive: body.isActive ?? true, dateJoined: body.dateJoined || await bizToday(req.companyId) }).returning();
+    const sync = await saveSchedule(t, u.id, cells);
+    await audit(req, { action: 'staff.create', entityType: 'user', entityId: u.id, after: { name: u.name, employeeCode: u.employeeCode, ...sync, cells: cells.length } }, t);
     return u;
   });
   res.status(201).json({ id: row.id });
@@ -55,13 +78,14 @@ router.put('/:id', requirePermission('staff.manage'), wrap(async (req, res) => {
   const body = staffSchema.partial().parse(req.body);
   const before = await db.query.users.findFirst({ where: and(eq(users.id, req.params.id), eq(users.companyId, req.companyId), eq(users.userType, 'staff')) });
   if (!before) throw notFound('Staff member');
-  const { pin, compoundIds, ...rest } = body;
+  const { pin, compoundIds, workDays, schedule, ...rest } = body;
   const patch = Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== undefined));
   if (pin) patch.pinHash = await bcrypt.hash(pin, 8);
+  const cells = await scheduleFrom(body, req.companyId);
   await db.transaction(async (t) => {
     await t.update(users).set({ ...patch, updatedAt: new Date() }).where(eq(users.id, before.id));
-    if (compoundIds) { await t.delete(staffCompounds).where(eq(staffCompounds.userId, before.id)); await t.insert(staffCompounds).values(compoundIds.map((compoundId) => ({ userId: before.id, compoundId }))); }
-    await audit(req, { action: 'staff.update', entityType: 'user', entityId: before.id, before: { name: before.name, workDays: before.workDays, isActive: before.isActive }, after: { ...patch, pinHash: undefined, pinChanged: !!pin, compoundIds } }, t);
+    let sync = null; if (cells) sync = await saveSchedule(t, before.id, cells);
+    await audit(req, { action: 'staff.update', entityType: 'user', entityId: before.id, before: { name: before.name, workDays: before.workDays, isActive: before.isActive }, after: { ...patch, pinHash: undefined, pinChanged: !!pin, ...(sync || {}) } }, t);
   });
   res.json({ ok: true });
 }));
@@ -105,6 +129,7 @@ router.post('/:id/absent-today', requirePermission('staff.manage'), wrap(async (
 router.get('/board', requirePermission('operations.view'), wrap(async (req, res) => {
   const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : await bizToday(req.companyId);
   const compoundId = req.query.compoundId || null;
+  const dow = new Date(date + 'T00:00:00Z').getUTCDay();
   const tasks = rows(await db.execute(sql`
     SELECT t.id, t.task_code, t.status, t.outcome, t.assigned_to, t.is_published, t.assigned_by, t.compound_id, c.name AS compound_name,
       v.id AS vehicle_id, v.plate_number, v.brand, v.model, v.color, v.vehicle_type, v.parking_location, v.gps_lat, v.gps_lng, un.unit_number, o.name AS owner_name,
@@ -116,9 +141,11 @@ router.get('/board', requirePermission('operations.view'), wrap(async (req, res)
     ORDER BY c.name, v.plate_number`));
   const staff = rows(await db.execute(sql`
     SELECT u.id, u.name, u.employee_code, u.work_days, u.daily_capacity,
+      (SELECT coalesce(sum(ss.capacity), 0) FROM staff_schedule ss WHERE ss.user_id = u.id AND ss.dow = ${dow} ${compoundId ? sql`AND ss.compound_id = ${compoundId}` : sql``})::int AS day_capacity,
+      (SELECT json_object_agg(ss.compound_id, ss.capacity) FROM staff_schedule ss WHERE ss.user_id = u.id AND ss.dow = ${dow}) AS compound_capacities,
       (SELECT json_agg(sc.compound_id) FROM staff_compounds sc WHERE sc.user_id = u.id) AS compound_ids,
       EXISTS (SELECT 1 FROM staff_leaves l WHERE l.user_id = u.id AND ${date} BETWEEN l.start_date AND l.end_date) AS on_leave,
-      (u.work_days @> ${JSON.stringify([new Date(date + 'T00:00:00Z').getUTCDay()])}::jsonb) AS works_today
+      EXISTS (SELECT 1 FROM staff_schedule ss WHERE ss.user_id = u.id AND ss.dow = ${dow} ${compoundId ? sql`AND ss.compound_id = ${compoundId}` : sql``}) AS works_today
     FROM users u WHERE u.company_id = ${req.companyId} AND u.user_type = 'staff' AND u.is_active = true ORDER BY u.name`));
   const runs = rows(await db.execute(sql`SELECT r.id, r.trigger, r.summary, r.created_at AS "createdAt", c.name AS compound_name FROM assignment_runs r LEFT JOIN compounds c ON c.id = r.compound_id WHERE r.company_id = ${req.companyId} AND r.for_date = ${date} ORDER BY r.created_at DESC LIMIT 8`));
   // How many eligible vehicles are still without a task (per compound) – tells the admin whether to redistribute

@@ -13,8 +13,9 @@ const todayCairo = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Ca
 
   // Capacity: Mahmoud (EMP-002) can take only 1 car per day
   const mahmoud = staff.find((s) => s.employee_code === 'EMP-002');
-  await j('PUT', `/admin/staff/${mahmoud.id}`, { dailyCapacity: 1, workHoursPerDay: 4 }, admin);
-  assert.equal((await j('GET', '/admin/staff', null, admin)).find((s) => s.id === mahmoud.id).daily_capacity, 1); step('capacity saved (EMP-002 = 1 car/day)');
+  await j('PUT', `/admin/staff/${mahmoud.id}`, { schedule: mahmoud.schedule.map((c) => ({ ...c, capacity: 1 })), workHoursPerDay: 4 }, admin);
+  const m2 = (await j('GET', '/admin/staff', null, admin)).find((s) => s.id === mahmoud.id);
+  assert.ok(m2.schedule.every((c) => c.capacity === 1) && m2.daily_capacity === 1 && m2.work_days.length === mahmoud.work_days.length); step('weekly schedule saved (EMP-002 = 1 car/day in his compound); derived work_days/capacity in sync');
 
   const board0 = await j('GET', `/admin/staff/board?date=${tomorrow}`, null, admin);
   step(`board before: ${board0.tasks.length} tasks, eligible pending: ${JSON.stringify(board0.pendingEligible.map((p) => `${p.compoundName}:${p.count}`))}`);
@@ -31,10 +32,11 @@ const todayCairo = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Ca
   // inside a compound, nobody with ≥2 more tasks than a colleague still holds a task of that compound that could move.
   for (const c of new Set(boardF.tasks.map((t) => t.compound_id))) {
     const team = boardF.staff.filter((s) => (s.compound_ids || []).includes(c) && s.works_today && !s.on_leave);
-    const capOf = (s) => s.daily_capacity || boardF.defaultCapacity || 1e6;
+    const capOf = (s) => (s.compound_capacities || {})[c] || boardF.defaultCapacity || 1e6;
+    const loadIn = (s) => boardF.tasks.filter((t) => t.compound_id === c && t.assigned_to === s.id).length;
     for (const h of team) for (const l of team) {
       if (h.id === l.id) continue;
-      const lh = perStaff[h.id] || 0, ll = perStaff[l.id] || 0;
+      const lh = loadIn(h), ll = loadIn(l);
       const movable = boardF.tasks.some((t) => t.compound_id === c && t.assigned_to === h.id);
       if (!movable || ll >= capOf(l)) continue;
       // utilisation-aware: a move is an improvement only if it lowers the pair's worst load÷capacity

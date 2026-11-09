@@ -68,6 +68,16 @@ export const staffLeaves = pgTable('staff_leaves', {
 }, (t) => [index('staff_leaves_user').on(t.userId, t.startDate)]);
 
 // One row per automatic/manual distribution run (what was assigned, to whom, why not)
+// Weekly schedule: which compound a washer serves on each weekday and how many cars he can take there that day.
+// staff_compounds / users.work_days are kept in sync (derived) for older code paths.
+export const staffSchedule = pgTable('staff_schedule', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  dow: integer('dow').notNull(), // 0=Sun..6=Sat
+  compoundId: uuid('compound_id').notNull().references(() => compounds.id, { onDelete: 'cascade' }),
+  capacity: integer('capacity').notNull(), // cars per day in this compound
+}, (t) => [uniqueIndex('staff_schedule_unique').on(t.userId, t.dow, t.compoundId), index('staff_schedule_compound_dow').on(t.compoundId, t.dow)]);
+
 export const assignmentRuns = pgTable('assignment_runs', {
   id: uuid('id').primaryKey().defaultRandom(),
   companyId: uuid('company_id').references(() => companies.id, { onDelete: 'cascade' }).notNull(),
