@@ -116,6 +116,9 @@ export const vehicles = pgTable('vehicles', {
   vehicleType: varchar('vehicle_type', { length: 30 }).default('sedan').notNull(),
   registrationDate: date('registration_date').defaultNow(),
   photoPath: text('photo_path'),
+  parkingLocation: varchar('parking_location', { length: 200 }), // e.g. "Garage B, level -1, bay 23"
+  gpsLat: doublePrecision('gps_lat'),
+  gpsLng: doublePrecision('gps_lng'),
   notes: text('notes'),
   status: varchar('status', { length: 20 }).default('active').notNull(), // active | inactive
   isDemo: boolean('is_demo').default(false).notNull(),

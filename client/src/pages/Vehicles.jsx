@@ -11,7 +11,7 @@ import { PageHeader, DataTable, SearchInput, Select, Modal, Field, Input, Textar
 export function VehicleForm({ open, onClose, initial, onSaved, defaultUnit }) {
   const { t } = useI18n(); const toast = useToast(); const lookups = useLookups();
   const [unit, setUnit] = useState(initial ? { id: initial.unitId, unitNumber: initial.unitNumber, compoundName: initial.compoundName, ownerName: initial.ownerName } : defaultUnit || null);
-  const [form, setForm] = useState({ plateNumber: initial?.plateNumber || '', brand: initial?.brand || '', model: initial?.model || '', color: initial?.color || '', vehicleType: initial?.vehicleType || 'sedan', registrationDate: initial?.registrationDate || new Date().toISOString().slice(0, 10), notes: initial?.notes || '', status: initial?.status || 'active' });
+  const [form, setForm] = useState({ plateNumber: initial?.plateNumber || '', brand: initial?.brand || '', model: initial?.model || '', color: initial?.color || '', vehicleType: initial?.vehicleType || 'sedan', registrationDate: initial?.registrationDate || new Date().toISOString().slice(0, 10), parkingLocation: initial?.parkingLocation || '', notes: initial?.notes || '', status: initial?.status || 'active' });
   const [busy, setBusy] = useState(false); const [error, setError] = useState(null);
   const fetchUnits = useCallback(async (q) => (await api.get('/admin/lookups/search', { params: { q, type: 'units' } })).data, []);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
@@ -38,6 +38,7 @@ export function VehicleForm({ open, onClose, initial, onSaved, defaultUnit }) {
         <Field label={t('vehicles.color')}><Input value={form.color} onChange={set('color')} /></Field>
         <Field label={t('vehicles.registrationDate')}><Input type="date" value={form.registrationDate || ''} onChange={set('registrationDate')} /></Field>
         {initial?.id && <Field label={t('common.status')}><Select value={form.status} onChange={set('status')}><option value="active">{t('common.active')}</option><option value="inactive">{t('common.inactive')}</option></Select></Field>}
+        <Field label={t('vehicles.parking')} className="sm:col-span-2"><Input value={form.parkingLocation} onChange={set('parkingLocation')} placeholder={t('register.parkingPlaceholder')} /></Field>
         <Field label={t('common.notes')} className="sm:col-span-2"><Textarea rows={2} value={form.notes} onChange={set('notes')} /></Field>
         {error && <p className="sm:col-span-2 text-sm text-red-600">{error}</p>}
       </form>
@@ -64,7 +65,7 @@ export default function Vehicles() {
   ];
   return (
     <div className="fade-in">
-      <PageHeader title={t('vehicles.title')} actions={can('vehicles.manage') && <button className="btn-primary" onClick={() => setModal(true)}><Plus size={16} />{t('vehicles.add')}</button>} />
+      <PageHeader title={t('vehicles.title')} actions={can('vehicles.manage') && <><button className="btn-secondary" onClick={() => setModal(true)}><Plus size={16} />{t('vehicles.add')}</button><button className="btn-primary" onClick={() => navigate('/register')}><Plus size={16} />{t('register.title')}</button></>} />
       <div className="flex flex-wrap gap-2 mb-4">
         <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} className="w-72" />
         <Select value={filters.compoundId} onChange={(e) => setFilter('compoundId', e.target.value)} className="w-48"><option value="">{t('dashboard.allCompounds')}</option>{lookups.data?.compounds.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>

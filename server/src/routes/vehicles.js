@@ -16,7 +16,8 @@ const router = Router();
 const { vehicles, units, owners, compounds, subscriptions, subscriptionPlans, qrCodes, subscriptionVehicles } = schema;
 const photoUpload = makeUploader('vehicles', { maxMb: 8 });
 
-export const VEHICLE_TYPES = ['sedan', 'suv', 'hatchback', 'pickup', 'van', 'motorcycle', 'other'];
+import { BODY_TYPES } from '../lib/vehicleCatalog.js';
+export const VEHICLE_TYPES = BODY_TYPES;
 
 const vehicleSchema = z.object({
   unitId: z.string().uuid(),
@@ -26,6 +27,9 @@ const vehicleSchema = z.object({
   color: z.string().max(40).optional().nullable(),
   vehicleType: z.enum(VEHICLE_TYPES).optional(),
   registrationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  parkingLocation: z.string().max(200).optional().nullable(),
+  gpsLat: z.coerce.number().min(-90).max(90).optional().nullable(),
+  gpsLng: z.coerce.number().min(-180).max(180).optional().nullable(),
   notes: z.string().max(5000).optional().nullable(),
   status: z.enum(['active', 'inactive']).optional(),
 });

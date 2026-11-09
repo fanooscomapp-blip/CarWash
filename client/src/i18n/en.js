@@ -1,6 +1,6 @@
 export default {
   app: { name: 'Car Wash Management', tagline: 'Multi-compound subscription platform' },
-  nav: { dashboard: 'Dashboard', compounds: 'Compounds', units: 'Units', owners: 'Owners', vehicles: 'Vehicles', plans: 'Subscription Plans', subscriptions: 'Subscriptions', renewals: 'Renewals', payments: 'Payments', operations: 'Washing Operations', staff: 'Staff', sms: 'SMS Center', reports: 'Reports', users: 'Users & Roles', settings: 'Settings', audit: 'Audit Logs', management: 'Management', finance: 'Finance', system: 'System', comingSoon: 'Phase 2+' },
+  nav: { dashboard: 'Dashboard', register: 'Register customer', compounds: 'Compounds', units: 'Units', owners: 'Owners', vehicles: 'Vehicles', plans: 'Subscription Plans', subscriptions: 'Subscriptions', renewals: 'Renewals', payments: 'Payments', operations: 'Washing Operations', staff: 'Staff', sms: 'SMS Center', reports: 'Reports', users: 'Users & Roles', settings: 'Settings', audit: 'Audit Logs', management: 'Management', finance: 'Finance', system: 'System', comingSoon: 'Phase 2+' },
   auth: { signIn: 'Sign in', email: 'Email address', password: 'Password', signingIn: 'Signing in…', welcome: 'Welcome back', subtitle: 'Sign in to the administration portal', logout: 'Sign out', invalid: 'Invalid email or password', demoHint: 'Demo admin: admin@carwash.local / Admin@12345' },
   common: {
     search: 'Search…', add: 'Add', create: 'Create', save: 'Save', saving: 'Saving…', cancel: 'Cancel', close: 'Close', edit: 'Edit', view: 'View', details: 'Details', actions: 'Actions', status: 'Status', all: 'All', none: 'None', yes: 'Yes', no: 'No', notes: 'Notes', optional: 'optional', required: 'Required',
@@ -16,7 +16,8 @@ export default {
   owners: { title: 'Owners', add: 'Add owner', edit: 'Edit owner', units: 'Units', vehicles: 'Vehicles', compounds: 'Compounds', activeSubs: 'Active' },
   vehicles: {
     title: 'Vehicles', add: 'Register vehicle', edit: 'Edit vehicle', plate: 'Plate number', brand: 'Brand', model: 'Model', color: 'Color', type: 'Vehicle type', registrationDate: 'Registration date', vehicleId: 'Vehicle ID', photo: 'Vehicle photo', uploadPhoto: 'Upload photo', currentSub: 'Current subscription', noSub: 'No subscription', washesLeft: 'washes left', subscriptionFilter: 'Subscription', newSubscription: 'New subscription', renew: 'Renew', history: 'Subscription history', qr: 'QR code', qrHint: 'QR printing & scanning arrive in Phase 4; the token is already generated.', expires: 'Expires',
-    types: { sedan: 'Sedan', suv: 'SUV', hatchback: 'Hatchback', pickup: 'Pickup', van: 'Van', motorcycle: 'Motorcycle', other: 'Other' },
+    types: { sedan: 'Sedan', suv: 'SUV', hatchback: 'Hatchback', crossover: 'Crossover', pickup: 'Pickup', van: 'Van', coupe: 'Coupe', minivan: 'Minivan', motorcycle: 'Motorcycle', other: 'Other' },
+    parking: 'Parking location', gps: 'GPS location', openMap: 'Open in maps',
   },
   plans: {
     title: 'Subscription Plans', add: 'Create plan', edit: 'Edit plan', name: 'Plan name', nameAr: 'Arabic name', type: 'Plan type', duration: 'Duration (days)', price: 'Base price', allowedDays: 'Allowed washing days', frequency: 'Max washes per week', maxWashes: 'Total washes allowed', scope: 'Coverage', maxVehicles: 'Max vehicles', description: 'Description', overrides: 'Price overrides', addOverride: 'Add override', overrideHint: 'Leave compound or vehicle type empty to match any.', anyCompound: 'Any compound', anyType: 'Any vehicle type', usage: '{active} active · {total} total', inactiveHint: 'Inactive plans stay attached to existing subscriptions but cannot be selected for new ones.',
@@ -38,5 +39,12 @@ export default {
   },
   audit: { title: 'Audit Logs', action: 'Action', entity: 'Entity', user: 'User', when: 'When', changes: 'Changes', before: 'Before', after: 'After', system: 'System', ip: 'IP' },
   notifications: { title: 'Notifications', empty: 'You are all caught up', markAll: 'Mark all read' },
+  register: {
+    title: 'Register customer', subtitle: 'One screen: mobile number → owner → vehicles with their unit codes', mobileHint: 'Type the mobile number — existing customers are recognised automatically', looking: 'Looking up…', foundOwner: 'Existing customer — vehicles will be added to this owner', newOwner: 'New customer — enter the name below', namePlaceholder: 'Full name',
+    vehicleN: 'Vehicle {n}', unitCode: 'Unit code', bodyType: 'Body type', brandPlaceholder: 'Search brand…', parking: 'Parking location', parkingPlaceholder: 'e.g. Garage B, level -1, bay 23', gps: 'GPS', captureGps: 'Capture location', gpsUnsupported: 'This device does not support location', gpsDenied: 'Location permission denied',
+    addVehicle: 'Add another vehicle', save: 'Save customer & vehicles', saved: '{n} vehicle(s) registered', doneTitle: 'Registration complete', newOwnerCreated: 'New customer created', existingOwnerUsed: 'Added to existing customer', unitsCreated: '{n} new unit(s) created', another: 'Register another customer', viewOwner: 'Open customer file',
+    sideTitle: 'Customer file', sideEmpty: 'Enter a mobile number to see whether this customer already exists, their units and vehicles.', otherCompoundNote: 'This customer\'s vehicles are registered in another compound.',
+  },
+  colors: { white: 'White', black: 'Black', silver: 'Silver', grey: 'Grey', blue: 'Blue', navy: 'Navy', red: 'Red', maroon: 'Maroon', green: 'Green', beige: 'Beige', brown: 'Brown', gold: 'Gold', orange: 'Orange', yellow: 'Yellow', purple: 'Purple', other: 'Other' },
   validation: { required: 'This field is required' },
 };

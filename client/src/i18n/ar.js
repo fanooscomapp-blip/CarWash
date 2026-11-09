@@ -1,6 +1,6 @@
 export default {
   app: { name: 'إدارة غسيل السيارات', tagline: 'منصة اشتراكات متعددة الكمبوندات' },
-  nav: { dashboard: 'لوحة التحكم', compounds: 'الكمبوندات', units: 'الوحدات', owners: 'الملاك', vehicles: 'المركبات', plans: 'باقات الاشتراك', subscriptions: 'الاشتراكات', renewals: 'التجديدات', payments: 'المدفوعات', operations: 'عمليات الغسيل', staff: 'الموظفون', sms: 'مركز الرسائل', reports: 'التقارير', users: 'المستخدمون والصلاحيات', settings: 'الإعدادات', audit: 'سجل التدقيق', management: 'الإدارة', finance: 'المالية', system: 'النظام', comingSoon: 'المرحلة 2+' },
+  nav: { dashboard: 'لوحة التحكم', register: 'تسجيل عميل', compounds: 'الكمبوندات', units: 'الوحدات', owners: 'الملاك', vehicles: 'المركبات', plans: 'باقات الاشتراك', subscriptions: 'الاشتراكات', renewals: 'التجديدات', payments: 'المدفوعات', operations: 'عمليات الغسيل', staff: 'الموظفون', sms: 'مركز الرسائل', reports: 'التقارير', users: 'المستخدمون والصلاحيات', settings: 'الإعدادات', audit: 'سجل التدقيق', management: 'الإدارة', finance: 'المالية', system: 'النظام', comingSoon: 'المرحلة 2+' },
   auth: { signIn: 'تسجيل الدخول', email: 'البريد الإلكتروني', password: 'كلمة المرور', signingIn: 'جارٍ الدخول…', welcome: 'أهلاً بعودتك', subtitle: 'سجّل الدخول إلى بوابة الإدارة', logout: 'تسجيل الخروج', invalid: 'البريد أو كلمة المرور غير صحيحة', demoHint: 'حساب تجريبي: admin@carwash.local / Admin@12345' },
   common: {
     search: 'بحث…', add: 'إضافة', create: 'إنشاء', save: 'حفظ', saving: 'جارٍ الحفظ…', cancel: 'إلغاء', close: 'إغلاق', edit: 'تعديل', view: 'عرض', details: 'التفاصيل', actions: 'إجراءات', status: 'الحالة', all: 'الكل', none: 'لا يوجد', yes: 'نعم', no: 'لا', notes: 'ملاحظات', optional: 'اختياري', required: 'مطلوب',
@@ -16,7 +16,8 @@ export default {
   owners: { title: 'الملاك', add: 'إضافة مالك', edit: 'تعديل مالك', units: 'الوحدات', vehicles: 'المركبات', compounds: 'الكمبوندات', activeSubs: 'نشط' },
   vehicles: {
     title: 'المركبات', add: 'تسجيل مركبة', edit: 'تعديل مركبة', plate: 'رقم اللوحة', brand: 'الماركة', model: 'الموديل', color: 'اللون', type: 'نوع المركبة', registrationDate: 'تاريخ التسجيل', vehicleId: 'معرّف المركبة', photo: 'صورة المركبة', uploadPhoto: 'رفع صورة', currentSub: 'الاشتراك الحالي', noSub: 'بدون اشتراك', washesLeft: 'غسلة متبقية', subscriptionFilter: 'الاشتراك', newSubscription: 'اشتراك جديد', renew: 'تجديد', history: 'سجل الاشتراكات', qr: 'رمز QR', qrHint: 'طباعة ومسح QR في المرحلة 4؛ الرمز مُولّد بالفعل.', expires: 'ينتهي',
-    types: { sedan: 'سيدان', suv: 'دفع رباعي', hatchback: 'هاتشباك', pickup: 'بيك أب', van: 'فان', motorcycle: 'دراجة نارية', other: 'أخرى' },
+    types: { sedan: 'سيدان', suv: 'دفع رباعي', hatchback: 'هاتشباك', crossover: 'كروس أوفر', pickup: 'بيك أب', van: 'فان', coupe: 'كوبيه', minivan: 'ميني فان', motorcycle: 'دراجة نارية', other: 'أخرى' },
+    parking: 'موقع الركن', gps: 'موقع GPS', openMap: 'فتح في الخرائط',
   },
   plans: {
     title: 'باقات الاشتراك', add: 'إنشاء باقة', edit: 'تعديل باقة', name: 'اسم الباقة', nameAr: 'الاسم بالعربية', type: 'نوع الباقة', duration: 'المدة (أيام)', price: 'السعر الأساسي', allowedDays: 'أيام الغسيل المسموحة', frequency: 'الحد الأقصى أسبوعياً', maxWashes: 'إجمالي الغسلات', scope: 'التغطية', maxVehicles: 'أقصى عدد مركبات', description: 'الوصف', overrides: 'أسعار خاصة', addOverride: 'إضافة سعر خاص', overrideHint: 'اترك الكمبوند أو نوع المركبة فارغاً ليطابق الجميع.', anyCompound: 'أي كمبوند', anyType: 'أي نوع مركبة', usage: '{active} نشط · {total} إجمالي', inactiveHint: 'الباقات غير النشطة تبقى مرتبطة بالاشتراكات الحالية ولا يمكن اختيارها للجديدة.',
@@ -38,5 +39,12 @@ export default {
   },
   audit: { title: 'سجل التدقيق', action: 'الإجراء', entity: 'الكيان', user: 'المستخدم', when: 'الوقت', changes: 'التغييرات', before: 'قبل', after: 'بعد', system: 'النظام', ip: 'IP' },
   notifications: { title: 'الإشعارات', empty: 'لا توجد إشعارات جديدة', markAll: 'تحديد الكل كمقروء' },
+  register: {
+    title: 'تسجيل عميل', subtitle: 'شاشة واحدة: رقم الجوال ← المالك ← المركبات مع أكواد الوحدات', mobileHint: 'اكتب رقم الجوال — العملاء الموجودون يتم التعرف عليهم تلقائياً', looking: 'جارٍ البحث…', foundOwner: 'عميل موجود — ستُضاف المركبات لهذا المالك', newOwner: 'عميل جديد — أدخل الاسم بالأسفل', namePlaceholder: 'الاسم الكامل',
+    vehicleN: 'المركبة {n}', unitCode: 'كود الوحدة', bodyType: 'الشكل', brandPlaceholder: 'ابحث عن الماركة…', parking: 'موقع الركن', parkingPlaceholder: 'مثال: جراج B، الدور -1، رقم 23', gps: 'GPS', captureGps: 'التقاط الموقع', gpsUnsupported: 'هذا الجهاز لا يدعم تحديد الموقع', gpsDenied: 'تم رفض إذن الموقع',
+    addVehicle: 'إضافة مركبة أخرى', save: 'حفظ العميل والمركبات', saved: 'تم تسجيل {n} مركبة', doneTitle: 'اكتمل التسجيل', newOwnerCreated: 'تم إنشاء عميل جديد', existingOwnerUsed: 'أُضيفت لعميل موجود', unitsCreated: 'تم إنشاء {n} وحدة جديدة', another: 'تسجيل عميل آخر', viewOwner: 'فتح ملف العميل',
+    sideTitle: 'ملف العميل', sideEmpty: 'أدخل رقم الجوال لمعرفة إن كان العميل موجوداً مسبقاً ووحداته ومركباته.', otherCompoundNote: 'مركبات هذا العميل مسجلة في كمبوند آخر.',
+  },
+  colors: { white: 'أبيض', black: 'أسود', silver: 'فضي', grey: 'رمادي', blue: 'أزرق', navy: 'كحلي', red: 'أحمر', maroon: 'عنابي', green: 'أخضر', beige: 'بيج', brown: 'بني', gold: 'ذهبي', orange: 'برتقالي', yellow: 'أصفر', purple: 'بنفسجي', other: 'أخرى' },
   validation: { required: 'هذا الحقل مطلوب' },
 };

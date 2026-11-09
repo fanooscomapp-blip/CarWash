@@ -62,7 +62,7 @@ export default function Units() {
   ];
   return (
     <div className="fade-in">
-      <PageHeader title={t('units.title')} actions={can('units.manage') && <button className="btn-primary" onClick={() => setModal(true)}><Plus size={16} />{t('units.add')}</button>} />
+      <PageHeader title={t('units.title')} actions={can('units.manage') && <><button className="btn-secondary" onClick={() => setModal(true)}><Plus size={16} />{t('units.add')}</button><button className="btn-primary" onClick={() => navigate('/register')}><Plus size={16} />{t('register.title')}</button></>} />
       <div className="flex flex-wrap gap-2 mb-4">
         <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} className="w-80" placeholder={t('common.selectUnit')} />
         <Select value={compoundId} onChange={(e) => { setCompoundId(e.target.value); setPage(1); }} className="w-52"><option value="">{t('dashboard.allCompounds')}</option>{lookups.data?.compounds.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>

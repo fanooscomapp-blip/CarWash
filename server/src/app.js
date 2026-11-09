@@ -19,6 +19,7 @@ import dashboardRouter from './routes/dashboard.js';
 import usersRouter from './routes/users.js';
 import settingsRouter from './routes/settings.js';
 import { auditRouter, notificationsRouter, lookupsRouter } from './routes/misc.js';
+import registrationRouter from './routes/registration.js';
 
 export function createApp() {
   const app = express();
@@ -39,6 +40,7 @@ export function createApp() {
   admin.use('/owners', ownersRouter);
   admin.use('/units', unitsRouter);
   admin.use('/vehicles', vehiclesRouter);
+  admin.use('/registration', registrationRouter);
   admin.use('/plans', plansRouter);
   admin.use('/subscriptions', subscriptionsRouter);
   admin.use('/payments', paymentsRouter);

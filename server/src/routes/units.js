@@ -6,6 +6,7 @@ import { wrap, notFound, badRequest } from '../lib/errors.js';
 import { requirePermission } from '../middleware/auth.js';
 import { audit } from '../lib/audit.js';
 import { parsePagination, paged, compact, ilike } from '../lib/util.js';
+import { normalizeMobile } from '../lib/mobile.js';
 
 const router = Router();
 const { units, owners, compounds, vehicles, subscriptions, payments, subscriptionPlans } = schema;
@@ -63,7 +64,7 @@ router.post('/', requirePermission('units.manage'), wrap(async (req, res) => {
     let ownerId = body.ownerId;
     if (!ownerId) {
       if (!body.owner) throw badRequest('Either ownerId or owner details are required');
-      const mobile = body.owner.mobile.replace(/[\s\-()]/g, '');
+      const mobile = normalizeMobile(body.owner.mobile);
       const existing = await t.query.owners.findFirst({ where: and(eq(owners.companyId, req.companyId), eq(owners.mobile, mobile)) });
       if (existing) ownerId = existing.id;
       else {

@@ -5,6 +5,7 @@ import Layout from './components/Layout.jsx';
 import { Spinner, Empty } from './components/ui.jsx';
 import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
+import Register from './pages/Register.jsx';
 import Compounds from './pages/Compounds.jsx';
 import CompoundDetail from './pages/CompoundDetail.jsx';
 import Units from './pages/Units.jsx';
@@ -43,6 +44,7 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route element={<Protected><Layout /></Protected>}>
         <Route index element={<Dashboard />} />
+        <Route path="register" element={<Register />} />
         <Route path="compounds" element={<Compounds />} />
         <Route path="compounds/:id" element={<CompoundDetail />} />
         <Route path="units" element={<Units />} />

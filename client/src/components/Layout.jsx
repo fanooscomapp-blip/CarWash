@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Building2, Home, Users, Car, Layers, FileText, RefreshCw, CreditCard, Droplets, UserCog, MessageSquare, BarChart3, ShieldCheck, Settings, ScrollText, Bell, LogOut, Menu, X, Languages, ChevronDown } from 'lucide-react';
+import { LayoutDashboard, UserPlus, Building2, Home, Users, Car, Layers, FileText, RefreshCw, CreditCard, Droplets, UserCog, MessageSquare, BarChart3, ShieldCheck, Settings, ScrollText, Bell, LogOut, Menu, X, Languages, ChevronDown } from 'lucide-react';
 import { useAuth } from '../lib/auth.jsx';
 import { useI18n } from '../lib/i18n.jsx';
 import { api } from '../lib/api.js';
@@ -9,6 +9,7 @@ import { fmtDateTime } from '../lib/format.js';
 const NAV = [
   { group: 'management', items: [
     { to: '/', icon: LayoutDashboard, key: 'dashboard', perm: 'dashboard.view', end: true },
+    { to: '/register', icon: UserPlus, key: 'register', perm: 'vehicles.manage', highlight: true },
     { to: '/compounds', icon: Building2, key: 'compounds', perm: 'compounds.view' },
     { to: '/units', icon: Home, key: 'units', perm: 'units.view' },
     { to: '/owners', icon: Users, key: 'owners', perm: 'owners.view' },
@@ -48,7 +49,7 @@ function Sidebar({ onNavigate }) {
               <p className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{t(`nav.${g.group}`)}</p>
               <div className="space-y-0.5">
                 {items.map((i) => (
-                  <NavLink key={i.to} to={i.to} end={i.end} onClick={onNavigate} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''} ${i.soon ? 'opacity-60' : ''}`}>
+                  <NavLink key={i.to} to={i.to} end={i.end} onClick={onNavigate} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''} ${i.soon ? 'opacity-60' : ''} ${i.highlight && !isActive ? 'text-brand-300' : ''}`}>
                     <i.icon size={18} /><span className="flex-1">{t(`nav.${i.key}`)}</span>
                     {i.soon && <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px]">{t('nav.comingSoon')}</span>}
                   </NavLink>

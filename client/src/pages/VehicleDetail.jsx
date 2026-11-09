@@ -39,6 +39,7 @@ export default function VehicleDetail() {
             [t('common.unit'), <Link className="text-brand-600 hover:underline" to={`/units/${v.unitId}`}>{v.unitNumber}</Link>], [t('common.compound'), <Link className="text-brand-600 hover:underline" to={`/compounds/${v.compoundId}`}>{v.compoundName}</Link>], [t('common.owner'), <Link className="text-brand-600 hover:underline" to={`/owners/${v.ownerId}`}>{v.ownerName}</Link>],
             [t('vehicles.type'), t(`vehicles.types.${v.vehicleType}`)], [t('vehicles.registrationDate'), fmtDate(v.registrationDate, lang)], [t('common.mobile'), <span dir="ltr">{v.ownerMobile}</span>],
             [t('vehicles.currentSub'), current ? <span className="flex items-center gap-2 flex-wrap"><StatusBadge status={current.status} /><span className="text-xs text-slate-500">{current.planName} · {fmtDate(current.startDate, lang)} → {fmtDate(current.endDate, lang)} · {current.washesAllowed - current.washesUsed} {t('vehicles.washesLeft')}</span></span> : <StatusBadge status={null} />],
+            [t('vehicles.parking'), v.parkingLocation], [t('vehicles.gps'), v.gpsLat ? <a className="text-brand-600 hover:underline" dir="ltr" target="_blank" rel="noreferrer" href={`https://maps.google.com/?q=${v.gpsLat},${v.gpsLng}`}>{v.gpsLat}, {v.gpsLng} ↗</a> : null],
             [t('common.notes'), v.notes],
           ]} />
         </div>

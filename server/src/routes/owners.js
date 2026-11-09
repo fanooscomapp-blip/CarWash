@@ -6,11 +6,11 @@ import { wrap, notFound } from '../lib/errors.js';
 import { requirePermission } from '../middleware/auth.js';
 import { audit } from '../lib/audit.js';
 import { parsePagination, paged, compact, ilike } from '../lib/util.js';
+import { normalizeMobile } from '../lib/mobile.js';
 
 const router = Router();
 const { owners, units, vehicles, subscriptions, payments, compounds, subscriptionPlans } = schema;
 
-const normalizeMobile = (s) => s.replace(/[\s\-()]/g, '');
 const ownerSchema = z.object({
   name: z.string().min(1).max(200),
   mobile: z.string().min(6).max(30).transform(normalizeMobile),
