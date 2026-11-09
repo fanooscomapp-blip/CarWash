@@ -23,6 +23,7 @@ import Payments from './pages/Payments.jsx';
 import UsersRoles from './pages/UsersRoles.jsx';
 import Staff from './pages/Staff.jsx';
 import Operations from './pages/Operations.jsx';
+import Reports from './pages/Reports.jsx';
 import SettingsPage from './pages/Settings.jsx';
 import AuditLogs from './pages/AuditLogs.jsx';
 import PortalApp from './portal/PortalApp.jsx';
@@ -71,7 +72,7 @@ export default function App() {
         <Route path="operations" element={<Operations />} />
         <Route path="staff" element={<Staff />} />
         <Route path="sms" element={<SmsCenter />} />
-        <Route path="reports" element={<Soon phase={2} />} />
+        <Route path="reports" element={<Reports />} />
         <Route path="users" element={<UsersRoles />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="audit" element={<AuditLogs />} />

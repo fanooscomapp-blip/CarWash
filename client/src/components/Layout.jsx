@@ -25,7 +25,7 @@ const NAV = [
     { to: '/operations', icon: Droplets, key: 'operations', perm: 'operations.view' },
     { to: '/staff', icon: UserCog, key: 'staff', perm: 'staff.view' },
     { to: '/sms', icon: MessageSquare, key: 'sms', perm: 'sms.view' },
-    { to: '/reports', icon: BarChart3, key: 'reports', perm: 'reports.view', soon: true },
+    { to: '/reports', icon: BarChart3, key: 'reports', perm: 'reports.view' },
   ] },
   { group: 'system', items: [
     { to: '/users', icon: ShieldCheck, key: 'users', perm: 'users.manage' },
