@@ -40,6 +40,8 @@ export const users = pgTable('users', {
   passwordHash: text('password_hash').notNull(),
   userType: varchar('user_type', { length: 20 }).default('admin').notNull(), // admin | staff
   employeeCode: varchar('employee_code', { length: 40 }),
+  pinHash: text('pin_hash'),                                   // staff portal: 4–6 digit PIN (employee code + PIN)
+  workDays: jsonb('work_days').$type().default([0, 1, 2, 3, 4, 5, 6]).notNull(), // 0=Sun..6=Sat
   isActive: boolean('is_active').default(true).notNull(),
   dateJoined: date('date_joined'),
   lastLoginAt: ts('last_login_at'),
@@ -51,6 +53,29 @@ export const staffCompounds = pgTable('staff_compounds', {
   userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
   compoundId: uuid('compound_id').references(() => compounds.id, { onDelete: 'cascade' }).notNull(),
 }, (t) => [primaryKey({ columns: [t.userId, t.compoundId] })]);
+
+// Staff leave / absence (planned ranges or a same-day emergency). Tasks are re-distributed when a leave covers an assigned day.
+export const staffLeaves = pgTable('staff_leaves', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  startDate: date('start_date').notNull(),
+  endDate: date('end_date').notNull(),
+  reason: varchar('reason', { length: 200 }),
+  createdBy: uuid('created_by').references(() => users.id),
+  createdAt: createdAt(),
+}, (t) => [index('staff_leaves_user').on(t.userId, t.startDate)]);
+
+// One row per automatic/manual distribution run (what was assigned, to whom, why not)
+export const assignmentRuns = pgTable('assignment_runs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  companyId: uuid('company_id').references(() => companies.id, { onDelete: 'cascade' }).notNull(),
+  compoundId: uuid('compound_id').references(() => compounds.id),
+  forDate: date('for_date').notNull(),
+  trigger: varchar('trigger', { length: 20 }).notNull(), // scheduled | manual | absence
+  summary: jsonb('summary').notNull(),
+  createdBy: uuid('created_by').references(() => users.id),
+  createdAt: createdAt(),
+});
 
 export const settings = pgTable('settings', {
   companyId: uuid('company_id').references(() => companies.id, { onDelete: 'cascade' }).notNull(),
@@ -300,8 +325,11 @@ export const washingTasks = pgTable('washing_tasks', {
   assignedTo: uuid('assigned_to').references(() => users.id),
   isPublished: boolean('is_published').default(false).notNull(),
   priority: integer('priority').default(0).notNull(),
-  status: varchar('status', { length: 30 }).default('assigned').notNull(), // assigned|accepted|in_progress|completed|issue_reported|cancelled
+  status: varchar('status', { length: 30 }).default('assigned').notNull(), // assigned|accepted|in_progress|completed|issue_reported|cancelled|skipped
+  outcome: varchar('outcome', { length: 30 }),          // washed | not_found | locked | damage | postponed | other (set by staff)
+  outcomeNote: text('outcome_note'),
   cancelReason: text('cancel_reason'),
+  assignedBy: varchar('assigned_by', { length: 20 }).default('auto'), // auto | admin | claim
   createdBy: uuid('created_by').references(() => users.id),
   createdAt: createdAt(),
   updatedAt: updatedAt(),

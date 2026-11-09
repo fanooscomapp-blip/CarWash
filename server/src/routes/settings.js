@@ -41,6 +41,8 @@ const sectionSchemas = {
   photos: z.object({ minBeforePhotos: z.coerce.number().int().min(1).max(10), minAfterPhotos: z.coerce.number().int().min(1).max(10), maxPhotoSizeMb: z.coerce.number().int().min(1).max(50) }),
   notifications: z.object({ expiryReminderDays: z.array(z.number().int().min(1).max(60)), sendOnExpiry: z.boolean(), postExpiryReminderDays: z.array(z.number().int().min(1).max(60)), notifyAdminOnPendingPayment: z.boolean(), notifyAdminOnIssue: z.boolean(), smsOnPaymentApproved: z.boolean(), smsOnPaymentRejected: z.boolean(), smsOnWashCompleted: z.boolean() }),
   paymentMethods: z.array(z.string().min(1).max(40)).min(1),
+  assignment: z.object({ enabled: z.boolean(), assignHour: z.coerce.number().int().min(0).max(23), preferLastWasher: z.boolean(), maxPerStaffPerDay: z.coerce.number().int().min(0).max(200), publishUnassignedToPool: z.boolean() }),
+  outcomes: z.array(z.object({ key: z.string().min(1).max(30).regex(/^[a-z_]+$/), icon: z.string().max(30), labelAr: z.string().min(1).max(100), labelEn: z.string().min(1).max(100), consumesQuota: z.boolean(), requiresPhoto: z.boolean() })).min(1).max(12),
 };
 
 // Send a real test message through the configured provider (nothing is simulated)

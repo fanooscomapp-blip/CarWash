@@ -25,6 +25,7 @@ import washRecordsRouter from './routes/washRecords.js';
 import portalRouter from './routes/portal.js';
 import joinRouter from './routes/join.js';
 import registrationRequestsRouter from './routes/registrationRequests.js';
+import staffRouter from './routes/staff.js';
 
 export function createApp() {
   const app = express();
@@ -59,6 +60,7 @@ export function createApp() {
   admin.use('/sms', smsRouter);
   admin.use('/wash-records', washRecordsRouter);
   admin.use('/registration-requests', registrationRequestsRouter);
+  admin.use('/staff', staffRouter);
   app.use('/api/admin', admin);
 
   app.use('/api', (_req, _res, next) => next(notFound('Endpoint')));

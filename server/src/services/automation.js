@@ -4,6 +4,8 @@ import { db, schema } from '../db/index.js';
 import { refreshStatuses } from './subscriptionService.js';
 import { systemAudit } from '../lib/audit.js';
 import { runReminderAutomation } from './renewalLinkService.js';
+import { runScheduledAssignment } from './assignmentService.js';
+import { config } from '../lib/config.js';
 
 // Nightly automation: recompute subscription statuses for every company and raise in-app notices for newly expiring/expired ones.
 // SMS reminders (Phase 4) hook into the same place: smsService.sendExpiryReminders(companyId).
@@ -28,4 +30,6 @@ export function startSchedulers() {
   // 00:05 every day (server time) + hourly safety refresh
   cron.schedule('5 0 * * *', () => runDailyAutomation().catch((e) => console.error('daily automation failed', e)));
   cron.schedule('0 * * * *', () => runDailyAutomation().catch((e) => console.error('hourly automation failed', e)));
+  // Every hour on the hour: companies whose assignHour matches get tomorrow's tasks distributed
+  cron.schedule('2 * * * *', () => { const h = Number(new Intl.DateTimeFormat('en-GB', { timeZone: config.timezone, hour: 'numeric', hour12: false }).format(new Date())) % 24; runScheduledAssignment(h).catch((e) => console.error('scheduled assignment failed', e)); });
 }

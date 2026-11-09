@@ -11,6 +11,15 @@ export const SETTING_DEFAULTS = {
   portal: { baseUrl: '', sessionDays: 30, linkValidDays: 30, selfRegistration: true, joinMaxPerHour: 5 },
   otp: { length: 6, expiryMinutes: 5, maxAttempts: 5, resendCooldownSeconds: 60 },
   photos: { minBeforePhotos: 1, minAfterPhotos: 1, maxPhotoSizeMb: 8 },
+  // Daily distribution: run at `assignHour` (0-23, business TZ) for the next day; fairness: even split, prefer last washer
+  assignment: { enabled: true, assignHour: 20, preferLastWasher: true, maxPerStaffPerDay: 0, publishUnassignedToPool: true },
+  // Outcomes staff can pick instead of washing (key, icon, counts against quota?)
+  outcomes: [
+    { key: 'not_found', icon: 'car-off', labelAr: 'السيارة غير موجودة', labelEn: 'Car not found', consumesQuota: false, requiresPhoto: false },
+    { key: 'locked', icon: 'lock', labelAr: 'السيارة مقفولة / رفض المالك', labelEn: 'Locked / owner refused', consumesQuota: false, requiresPhoto: false },
+    { key: 'damage', icon: 'alert', labelAr: 'ضرر أو مشكلة بالسيارة', labelEn: 'Damage or issue', consumesQuota: false, requiresPhoto: true },
+    { key: 'postponed', icon: 'calendar', labelAr: 'تأجيل لبكرة', labelEn: 'Postpone to tomorrow', consumesQuota: false, requiresPhoto: false },
+  ],
   notifications: { expiryReminderDays: [3], sendOnExpiry: true, postExpiryReminderDays: [], notifyAdminOnPendingPayment: true, notifyAdminOnIssue: true, smsOnPaymentApproved: true, smsOnPaymentRejected: true, smsOnWashCompleted: false },
   paymentMethods: ['bank_transfer', 'cash', 'other'],
 };

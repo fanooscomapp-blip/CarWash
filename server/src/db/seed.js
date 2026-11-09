@@ -74,7 +74,7 @@ async function seedDemo(company, admin, roleRows) {
 
   const staffNames = [['Ahmed Samir', [0, 1]], ['Mahmoud Hassan', [1]], ['Youssef Nabil', [2, 0]]];
   for (const [i, [name, cIdx]] of staffNames.entries()) {
-    const [u] = await db.insert(schema.users).values({ companyId: cid, roleId: roleRows['Car Wash Staff'].id, name, email: `staff${i + 1}@carwash.local`, mobile: `+20100000000${i}`, passwordHash: await bcrypt.hash('Staff@12345', 10), userType: 'staff', employeeCode: `EMP-00${i + 1}`, dateJoined: addDays(today(), -200 + i * 30) }).returning();
+    const [u] = await db.insert(schema.users).values({ companyId: cid, roleId: roleRows['Car Wash Staff'].id, name, email: `staff${i + 1}@carwash.local`, mobile: `+20100000000${i}`, passwordHash: await bcrypt.hash('Staff@12345', 10), pinHash: await bcrypt.hash('1234', 8), workDays: i === 1 ? [6, 0, 1, 2, 3] : [0, 1, 2, 3, 4, 5, 6], userType: 'staff', employeeCode: `EMP-00${i + 1}`, dateJoined: addDays(today(), -200 + i * 30) }).returning();
     await db.insert(schema.staffCompounds).values(cIdx.map((k) => ({ userId: u.id, compoundId: compounds[k].id })));
   }
   await db.insert(schema.users).values({ companyId: cid, roleId: roleRows['Operations Manager'].id, name: 'Operations Manager', email: 'ops@carwash.local', passwordHash: await bcrypt.hash('Ops@12345', 10), userType: 'admin', dateJoined: today() });
