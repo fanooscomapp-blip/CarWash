@@ -5,40 +5,45 @@ import { useQuery, useDebounced, useLookups } from '../lib/hooks.js';
 import { useI18n } from '../lib/i18n.jsx';
 import { useAuth } from '../lib/auth.jsx';
 import { api } from '../lib/api.js';
-import { fmtDate } from '../lib/format.js';
+import { fmtDate, todayISO } from '../lib/format.js';
+import { BrandPicker, ColorPicker, GpsField, useGpsCapture, ColorDot, colorName } from '../components/VehiclePickers.jsx';
 import { PageHeader, DataTable, SearchInput, Select, Modal, Field, Input, Textarea, Spinner, useToast, AsyncSelect, StatusBadge } from '../components/ui.jsx';
 
 export function VehicleForm({ open, onClose, initial, onSaved, defaultUnit }) {
-  const { t } = useI18n(); const toast = useToast(); const lookups = useLookups();
+  const { t } = useI18n(); const toast = useToast(); const catalog = useQuery('/admin/registration/catalog');
   const [unit, setUnit] = useState(initial ? { id: initial.unitId, unitNumber: initial.unitNumber, compoundName: initial.compoundName, ownerName: initial.ownerName } : defaultUnit || null);
-  const [form, setForm] = useState({ plateNumber: initial?.plateNumber || '', brand: initial?.brand || '', model: initial?.model || '', color: initial?.color || '', vehicleType: initial?.vehicleType || 'sedan', registrationDate: initial?.registrationDate || new Date().toISOString().slice(0, 10), parkingLocation: initial?.parkingLocation || '', notes: initial?.notes || '', status: initial?.status || 'active' });
-  const [busy, setBusy] = useState(false); const [error, setError] = useState(null);
+  const [form, setForm] = useState({ plateNumber: initial?.plateNumber || '', brand: initial?.brand || '', model: initial?.model || '', color: initial?.color || 'white', vehicleType: initial?.vehicleType || 'sedan', registrationDate: initial?.registrationDate || todayISO(), parkingLocation: initial?.parkingLocation || '', gpsLat: initial?.gpsLat ?? null, gpsLng: initial?.gpsLng ?? null, notes: initial?.notes || '', status: initial?.status || 'active' });
+  const [busy, setBusy] = useState(false); const [gpsBusy, setGpsBusy] = useState(false); const [error, setError] = useState(null);
   const fetchUnits = useCallback(async (q) => (await api.get('/admin/lookups/search', { params: { q, type: 'units' } })).data, []);
+  const capture = useGpsCapture(toast, t);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const submit = async (e) => {
     e.preventDefault(); setBusy(true); setError(null);
     try {
       if (!unit) throw new Error(t('validation.required'));
-      const payload = { ...form, unitId: unit.id };
+      const payload = { ...form, unitId: unit.id, brand: form.brand || null, model: form.model || null, parkingLocation: form.parkingLocation || null };
       const { data } = initial?.id ? await api.put(`/admin/vehicles/${initial.id}`, payload) : await api.post('/admin/vehicles', payload);
       toast.success(t('common.success')); onSaved?.(data); onClose();
     } catch (err) { setError(err.message); } finally { setBusy(false); }
   };
   return (
-    <Modal open={open} onClose={onClose} title={initial?.id ? t('vehicles.edit') : t('vehicles.add')}
+    <Modal open={open} onClose={onClose} title={initial?.id ? t('vehicles.edit') : t('vehicles.add')} size="lg"
       footer={<><button className="btn-secondary" onClick={onClose}>{t('common.cancel')}</button><button form="vehicle-form" className="btn-primary" disabled={busy}>{busy && <Spinner />}{t('common.save')}</button></>}>
       <form id="vehicle-form" onSubmit={submit} className="grid sm:grid-cols-2 gap-4">
         <Field label={`${t('common.unit')} / ${t('common.owner')}`} required className="sm:col-span-2">
           <AsyncSelect fetchOptions={fetchUnits} value={unit} onChange={setUnit} disabled={!!defaultUnit && !initial} placeholder={t('common.selectUnit')} renderOption={(u) => <span><b>{u.unitNumber}</b> · {u.compoundName} · {u.ownerName}</span>} />
         </Field>
-        <Field label={t('vehicles.plate')} required><Input required dir="ltr" value={form.plateNumber} onChange={set('plateNumber')} className="uppercase" /></Field>
-        <Field label={t('vehicles.type')}><Select value={form.vehicleType} onChange={set('vehicleType')}>{(lookups.data?.vehicleTypes || ['sedan']).map((v) => <option key={v} value={v}>{t(`vehicles.types.${v}`)}</option>)}</Select></Field>
-        <Field label={t('vehicles.brand')}><Input value={form.brand} onChange={set('brand')} /></Field>
-        <Field label={t('vehicles.model')}><Input value={form.model} onChange={set('model')} /></Field>
-        <Field label={t('vehicles.color')}><Input value={form.color} onChange={set('color')} /></Field>
+        <Field label={t('vehicles.plate')} required><Input required dir="ltr" value={form.plateNumber} onChange={set('plateNumber')} className="uppercase font-semibold" placeholder="ABC 1234" /></Field>
         <Field label={t('vehicles.registrationDate')}><Input type="date" value={form.registrationDate || ''} onChange={set('registrationDate')} /></Field>
+        <Field label={t('vehicles.brand')}><BrandPicker value={form.brand} onChange={(v) => setForm({ ...form, brand: v })} brands={catalog.data?.brands || []} placeholder={t('register.brandPlaceholder')} /></Field>
+        <Field label={t('vehicles.model')}><Input value={form.model} onChange={set('model')} placeholder="Corolla" /></Field>
+        <Field label={t('register.bodyType')} className="sm:col-span-2">
+          <div className="flex flex-wrap gap-1.5">{(catalog.data?.bodyTypes || []).map((bt) => <button type="button" key={bt} onClick={() => setForm({ ...form, vehicleType: bt })} className={`rounded-lg px-2.5 py-1.5 text-xs font-medium border transition-colors ${form.vehicleType === bt ? 'bg-navy-900 text-white border-navy-900' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'}`}>{t(`vehicles.types.${bt}`)}</button>)}</div>
+        </Field>
+        <Field label={t('vehicles.color')} className="sm:col-span-2"><ColorPicker value={form.color} onChange={(v) => setForm({ ...form, color: v })} colors={catalog.data?.colors || []} t={t} /></Field>
+        <Field label={t('vehicles.parking')}><Input value={form.parkingLocation} onChange={set('parkingLocation')} placeholder={t('register.parkingPlaceholder')} /></Field>
+        <Field label={t('register.gps')}><GpsField lat={form.gpsLat} lng={form.gpsLng} busy={gpsBusy} onCapture={() => capture((lat, lng) => setForm((f) => ({ ...f, gpsLat: lat, gpsLng: lng })), setGpsBusy)} onClear={() => setForm({ ...form, gpsLat: null, gpsLng: null })} /></Field>
         {initial?.id && <Field label={t('common.status')}><Select value={form.status} onChange={set('status')}><option value="active">{t('common.active')}</option><option value="inactive">{t('common.inactive')}</option></Select></Field>}
-        <Field label={t('vehicles.parking')} className="sm:col-span-2"><Input value={form.parkingLocation} onChange={set('parkingLocation')} placeholder={t('register.parkingPlaceholder')} /></Field>
         <Field label={t('common.notes')} className="sm:col-span-2"><Textarea rows={2} value={form.notes} onChange={set('notes')} /></Field>
         {error && <p className="sm:col-span-2 text-sm text-red-600">{error}</p>}
       </form>
@@ -56,7 +61,7 @@ export default function Vehicles() {
   const { data, loading, error, reload } = useQuery('/admin/vehicles', { search: q, ...filters, page, pageSize: 20 });
   const columns = [
     { key: 'plateNumber', header: t('vehicles.plate'), render: (r) => <div><p className="font-semibold" dir="ltr">{r.plateNumber}</p><p className="text-xs text-slate-500 font-mono">{r.vehicleCode}</p></div> },
-    { key: 'brand', header: t('vehicles.brand'), render: (r) => <div><p>{r.brand} {r.model}</p><p className="text-xs text-slate-500">{r.color} · {t(`vehicles.types.${r.vehicleType}`)}</p></div> },
+    { key: 'brand', header: t('vehicles.brand'), render: (r) => <div><p>{r.brand} {r.model}</p><p className="text-xs text-slate-500 flex items-center gap-1"><ColorDot color={r.color} />{colorName(t, r.color)} · {t(`vehicles.types.${r.vehicleType}`)}</p></div> },
     { key: 'unitNumber', header: t('common.unit'), render: (r) => <div><p>{r.unitNumber}</p><p className="text-xs text-slate-500">{r.compoundName}</p></div> },
     { key: 'ownerName', header: t('common.owner'), render: (r) => <div><p>{r.ownerName}</p><p className="text-xs text-slate-500" dir="ltr">{r.ownerMobile}</p></div> },
     { key: 'currentSubscriptionStatus', header: t('vehicles.currentSub'), render: (r) => <div><StatusBadge status={r.currentSubscriptionStatus} />{r.currentSubscriptionEnd && <p className="text-xs text-slate-500 mt-1">{r.currentSubscriptionPlan} · {t('vehicles.expires')} {fmtDate(r.currentSubscriptionEnd, lang)}</p>}</div> },

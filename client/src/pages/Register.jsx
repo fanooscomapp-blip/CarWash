@@ -1,63 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Car, Plus, Trash2, MapPin, Search, Check, UserRound, Phone, Building2, LocateFixed, X, ExternalLink } from 'lucide-react';
+import { Car, Plus, Trash2, MapPin, Check, UserRound, Phone, Building2, ExternalLink } from 'lucide-react';
 import { useI18n } from '../lib/i18n.jsx';
 import { useAuth } from '../lib/auth.jsx';
 import { useQuery, useLookups, useDebounced } from '../lib/hooks.js';
 import { api } from '../lib/api.js';
 import { PageHeader, Field, Input, Spinner, useToast, StatusBadge } from '../components/ui.jsx';
+import { BrandPicker, UnitInput, ColorPicker, GpsField } from '../components/VehiclePickers.jsx';
 
 const newRow = (unitNumber = '') => ({ key: Math.random().toString(36).slice(2), unitNumber, plateNumber: '', brand: '', model: '', color: 'white', vehicleType: 'sedan', parkingLocation: '', gpsLat: null, gpsLng: null, gpsBusy: false });
-
-// Searchable brand picker (free text allowed)
-function BrandPicker({ value, onChange, brands, placeholder }) {
-  const [open, setOpen] = useState(false); const [q, setQ] = useState(value || ''); const box = useRef();
-  useEffect(() => setQ(value || ''), [value]);
-  useEffect(() => { const h = (e) => box.current && !box.current.contains(e.target) && setOpen(false); document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h); }, []);
-  const list = useMemo(() => brands.filter((b) => b.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 12), [brands, q]);
-  return (
-    <div className="relative" ref={box}>
-      <Search size={14} className="absolute top-1/2 -translate-y-1/2 start-2.5 text-slate-400 pointer-events-none" />
-      <input className="input ps-8" value={q} placeholder={placeholder} onFocus={() => setOpen(true)} onChange={(e) => { setQ(e.target.value); onChange(e.target.value); setOpen(true); }} />
-      {open && list.length > 0 && (
-        <div className="absolute z-30 mt-1 w-full max-h-56 overflow-auto rounded-lg border border-slate-200 bg-white shadow-lg">
-          {list.map((b) => <button type="button" key={b} onClick={() => { onChange(b); setQ(b); setOpen(false); }} className={`block w-full text-start px-3 py-1.5 text-sm hover:bg-slate-50 ${b === value ? 'font-semibold text-brand-600' : ''}`}>{b}</button>)}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Unit code: free text + suggestions from the compound
-function UnitInput({ value, onChange, compoundId, ownerId, placeholder }) {
-  const [open, setOpen] = useState(false); const [sugg, setSugg] = useState([]); const box = useRef();
-  const q = useDebounced(value, 200);
-  useEffect(() => { if (!compoundId || !open) return; api.get('/admin/registration/units', { params: { compoundId, q } }).then((r) => setSugg(r.data)).catch(() => setSugg([])); }, [q, compoundId, open]);
-  useEffect(() => { const h = (e) => box.current && !box.current.contains(e.target) && setOpen(false); document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h); }, []);
-  return (
-    <div className="relative" ref={box}>
-      <input className="input uppercase font-semibold" value={value} placeholder={placeholder} onFocus={() => setOpen(true)} onChange={(e) => { onChange(e.target.value); setOpen(true); }} />
-      {open && sugg.length > 0 && (
-        <div className="absolute z-30 mt-1 w-full max-h-56 overflow-auto rounded-lg border border-slate-200 bg-white shadow-lg">
-          {sugg.map((u) => <button type="button" key={u.id} onClick={() => { onChange(u.unitNumber); setOpen(false); }} className="flex w-full items-center justify-between px-3 py-1.5 text-sm hover:bg-slate-50"><span className="font-semibold">{u.unitNumber}</span><span className={`text-xs ${ownerId && u.ownerId !== ownerId ? 'text-orange-600' : 'text-slate-400'}`}>{u.ownerName}</span></button>)}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ColorPicker({ value, onChange, colors, t }) {
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {colors.map((c) => (
-        <button type="button" key={c.key} title={t(`colors.${c.key}`)} onClick={() => onChange(c.key)}
-          className={`relative h-7 w-7 rounded-full border transition-transform hover:scale-110 ${value === c.key ? 'ring-2 ring-offset-2 ring-brand-600 border-transparent' : 'border-slate-300'}`} style={{ background: c.hex }}>
-          {value === c.key && <Check size={13} className={`absolute inset-0 m-auto ${['white', 'beige', 'yellow', 'silver'].includes(c.key) ? 'text-slate-800' : 'text-white'}`} />}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 export default function Register() {
   const { t, lang } = useI18n(); const { can } = useAuth(); const toast = useToast(); const navigate = useNavigate();
@@ -150,8 +101,7 @@ export default function Register() {
                   <Field label={t('vehicles.color')} className="lg:col-span-2"><ColorPicker value={r.color} onChange={(v) => upd(r.key, { color: v })} colors={catalog.data?.colors || []} t={t} /></Field>
                   <Field label={<span className="flex items-center gap-1.5"><MapPin size={13} />{t('register.parking')}</span>} className="lg:col-span-3"><Input value={r.parkingLocation} onChange={(e) => upd(r.key, { parkingLocation: e.target.value })} placeholder={t('register.parkingPlaceholder')} /></Field>
                   <Field label={t('register.gps')}>
-                    {r.gpsLat ? <div className="flex items-center gap-1.5"><a href={`https://maps.google.com/?q=${r.gpsLat},${r.gpsLng}`} target="_blank" rel="noreferrer" className="input flex-1 text-xs text-brand-600 truncate" dir="ltr">{r.gpsLat}, {r.gpsLng}</a><button type="button" className="btn-ghost p-2" onClick={() => upd(r.key, { gpsLat: null, gpsLng: null })}><X size={14} /></button></div>
-                      : <button type="button" className="btn-secondary w-full" disabled={r.gpsBusy} onClick={() => captureGps(r.key)}>{r.gpsBusy ? <Spinner /> : <LocateFixed size={15} />}{t('register.captureGps')}</button>}
+                    <GpsField lat={r.gpsLat} lng={r.gpsLng} busy={r.gpsBusy} onCapture={() => captureGps(r.key)} onClear={() => upd(r.key, { gpsLat: null, gpsLng: null })} />
                   </Field>
                 </div>
               </div>

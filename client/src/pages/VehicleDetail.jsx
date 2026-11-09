@@ -10,6 +10,7 @@ import { PageHeader, Loading, ErrorBox, Tabs, DescriptionList, StatusBadge, Empt
 import { VehicleForm } from './Vehicles.jsx';
 import SubscriptionTable from '../components/SubscriptionTable.jsx';
 import RenewModal from '../components/RenewModal.jsx';
+import { colorName } from '../components/VehiclePickers.jsx';
 
 export default function VehicleDetail() {
   const { id } = useParams(); const { t, lang } = useI18n(); const { can } = useAuth(); const navigate = useNavigate(); const toast = useToast();
@@ -27,7 +28,7 @@ export default function VehicleDetail() {
   return (
     <div className="fade-in">
       <Link to="/vehicles" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 mb-3"><ArrowLeft size={14} className="rtl:rotate-180" />{t('nav.vehicles')}</Link>
-      <PageHeader title={<span className="flex items-center gap-3"><span dir="ltr">{v.plateNumber}</span><StatusBadge status={v.status} label={t(`common.${v.status}`)} /></span>} subtitle={`${v.vehicleCode} · ${v.brand || ''} ${v.model || ''} · ${v.color || ''}`}
+      <PageHeader title={<span className="flex items-center gap-3"><span dir="ltr">{v.plateNumber}</span><StatusBadge status={v.status} label={t(`common.${v.status}`)} /></span>} subtitle={`${v.vehicleCode} · ${v.brand || ''} ${v.model || ''} · ${colorName(t, v.color)}`}
         actions={<>
           {can('subscriptions.renew', 'subscriptions.manage') && canRenew && <button className="btn-accent" onClick={() => setRenew({ ...current, plates: v.plateNumber, ownerName: v.ownerName, unitNumber: v.unitNumber, compoundName: v.compoundName, compoundId: v.compoundId, vehicleIds: [v.id] })}><RefreshCw size={16} />{t('vehicles.renew')}</button>}
           {can('subscriptions.manage') && !current?.status?.match(/active|expiring_soon|pending_payment|suspended/) && <button className="btn-primary" onClick={() => navigate(`/subscriptions/new?unitId=${v.unitId}&vehicleId=${v.id}`)}><Plus size={16} />{t('vehicles.newSubscription')}</button>}
