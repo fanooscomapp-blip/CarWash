@@ -6,13 +6,15 @@ import { useI18n } from '../lib/i18n.jsx';
 import { useAuth } from '../lib/auth.jsx';
 import { api } from '../lib/api.js';
 import { fmtDate, fmtDateTime, fmtMoney } from '../lib/format.js';
-import { PageHeader, Loading, ErrorBox, DescriptionList, StatusBadge, ConfirmDialog, useToast, KpiCard } from '../components/ui.jsx';
+import { PageHeader, Loading, ErrorBox, DescriptionList, StatusBadge, ConfirmDialog, useToast, KpiCard, Modal, Spinner } from '../components/ui.jsx';
 import RenewModal from '../components/RenewModal.jsx';
+import WashDaysPicker from '../components/WashDaysPicker.jsx';
 
 export default function SubscriptionDetail() {
   const { id } = useParams(); const { t, lang } = useI18n(); const { can, company } = useAuth(); const toast = useToast(); const navigate = useNavigate();
   const { data: s, loading, error, reload } = useQuery(`/admin/subscriptions/${id}`);
   const [renew, setRenew] = useState(false); const [dialog, setDialog] = useState(null); const [busy, setBusy] = useState(false);
+  const [editDays, setEditDays] = useState(false); const [daysDraft, setDaysDraft] = useState(null); const [daysBusy, setDaysBusy] = useState(false);
   const [link, setLink] = useState(null); const [linkBusy, setLinkBusy] = useState(false);
   const getLink = async () => { setLinkBusy(true); try { const { data } = await api.get(`/admin/sms/renewal-link/${id}`); setLink(data.link); try { await navigator.clipboard.writeText(data.link); toast.success(t('common.copied')); } catch { /* clipboard blocked */ } } catch (e) { toast.error(e.message); } finally { setLinkBusy(false); } };
   // Opens WhatsApp with the Arabic renewal text + link prefilled (owner's number); nothing is sent until the admin taps send in WhatsApp
@@ -59,7 +61,7 @@ export default function SubscriptionDetail() {
           <div className="card p-5">
             <DescriptionList cols={3} items={[
               [t('common.plan'), s.planName], [t('subs.duration'), `${s.durationDays} ${t('common.days')}`], [t('subs.frequency'), s.frequencyPerWeek],
-              [t('subs.allowedDays'), <span className="flex flex-wrap gap-1">{[6, 0, 1, 2, 3, 4, 5].map((d) => <span key={d} className={`rounded px-1.5 py-0.5 text-[10px] ${s.allowedDays.includes(d) ? 'bg-navy-900 text-white' : 'bg-slate-100 text-slate-400'}`}>{days[d]}</span>)}</span>],
+              [t('subs.allowedDays'), <span className="flex flex-wrap items-center gap-1">{[6, 0, 1, 2, 3, 4, 5].map((d) => <span key={d} className={`rounded px-1.5 py-0.5 text-[10px] ${s.allowedDays.includes(d) ? 'bg-navy-900 text-white' : 'bg-slate-100 text-slate-400'}`}>{days[d]}</span>)}{can('subscriptions.manage') && s.status !== 'cancelled' && <button className="text-[11px] text-brand-600 hover:underline ms-1" onClick={() => { setDaysDraft(s.allowedDays); setEditDays(true); }}>{t('common.edit')}</button>}</span>],
               [t('common.owner'), <Link className="text-brand-600 hover:underline" to={`/owners/${s.ownerId}`}>{s.ownerName} <span dir="ltr" className="text-xs text-slate-500">{s.ownerMobile}</span></Link>], [t('common.unit'), <Link className="text-brand-600 hover:underline" to={`/units/${s.unitId}`}>{s.unitNumber} · {s.compoundName}</Link>],
               s.renewedFromId && [t('subs.renewedFrom'), <Link className="text-brand-600 hover:underline" to={`/subscriptions/${s.renewedFromId}`}>{s.history.find((h) => h.id === s.renewedFromId)?.subscription_code}</Link>],
               s.renewedToId && [t('subs.renewedTo'), <Link className="text-brand-600 hover:underline" to={`/subscriptions/${s.renewedToId}`}>{s.history.find((h) => h.id === s.renewedToId)?.subscription_code} <StatusBadge status={s.renewedToStatus} /></Link>],
@@ -79,6 +81,10 @@ export default function SubscriptionDetail() {
               <p className="text-xs text-slate-500">{h.plan_name} · {fmtDate(h.start_date, lang)} → {fmtDate(h.end_date, lang)}</p><div className="mt-1 flex items-center gap-2"><StatusBadge status={h.status} /><span className="text-xs text-slate-500">{fmtMoney(h.final_amount, cur, lang)}</span></div></li>))}</ol>
         </div>
       </div>
+      <Modal open={editDays} onClose={() => setEditDays(false)} title={t('washDays.editTitle')} footer={<><button className="btn-secondary" onClick={() => setEditDays(false)}>{t('common.cancel')}</button><button className="btn-primary" disabled={daysBusy} onClick={async () => { setDaysBusy(true); try { await api.put(`/admin/subscriptions/${s.id}/days`, { allowedDays: daysDraft }); toast.success(t('common.success')); setEditDays(false); reload(); } catch (e) { toast.error(e.message); } finally { setDaysBusy(false); } }}>{daysBusy && <Spinner />}{t('common.save')}</button></>}>
+        <p className="text-sm text-slate-600 mb-3">{t('washDays.editHint')}</p>
+        {editDays && <WashDaysPicker compoundId={s.compoundId} planId={s.planId} perWeek={s.frequencyPerWeek} unitId={s.unitId} excludeSubscriptionId={s.id} value={daysDraft} onChange={(d) => setDaysDraft(d)} />}
+      </Modal>
       {renew && <RenewModal open onClose={() => setRenew(false)} subscription={s} onRenewed={(r) => navigate(`/subscriptions/${r.subscription.id}`)} />}
       <ConfirmDialog open={dialog === 'approve'} onClose={() => setDialog(null)} loading={busy} title={t('subs.approvePayment')} message={t('payments.approveConfirm')} confirmLabel={t('payments.approve')} onConfirm={() => act(() => api.post(`/admin/payments/${pendingPayment.id}/approve`, {}), t('payments.approved_ok'))} />
       <ConfirmDialog open={dialog === 'reject'} onClose={() => setDialog(null)} loading={busy} danger title={t('subs.rejectPayment')} reasonLabel={t('subs.rejectReason')} confirmLabel={t('payments.reject')} onConfirm={(reason) => act(() => api.post(`/admin/payments/${pendingPayment.id}/reject`, { reason }))} />

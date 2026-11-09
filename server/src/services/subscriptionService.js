@@ -1,5 +1,6 @@
 import { and, eq, inArray, sql, ne, isNull } from 'drizzle-orm';
 import { db, schema } from '../db/index.js';
+import { suggestWashDays } from './washDaysService.js';
 import { badRequest, conflict, notFound, validationFailed } from '../lib/errors.js';
 import { addDays, daysBetween, money, nextCode, today } from '../lib/util.js';
 import { audit } from '../lib/audit.js';
@@ -110,6 +111,10 @@ export async function createSubscription(req, input, tx) {
     const finalAmount = money(price - discount);
     const paymentStatus = input.paymentStatus === 'paid' ? 'paid' : 'pending';
 
+    // No explicit days → fixed weekly pattern chosen by compound load (e.g. Sat/Mon/Wed for 3×/week)
+    const perWeek = Number(input.frequencyPerWeek ?? plan.maxFrequencyPerWeek);
+    let autoDays = plan.allowedDays;
+    if (!input.allowedDays && perWeek < plan.allowedDays.length) autoDays = (await suggestWashDays(companyId, { compoundId: unit.compoundId, workingDays: plan.allowedDays, perWeek, ownerId: unit.ownerId })).suggested;
     const code = await nextCode(companyId, 'subscription', 'SUB', t);
     const draft = {
       companyId, subscriptionCode: code, compoundId: unit.compoundId, unitId: unit.id, ownerId: unit.ownerId,
@@ -117,7 +122,7 @@ export async function createSubscription(req, input, tx) {
       planSnapshot: { id: plan.id, name: plan.name, nameAr: plan.nameAr, planType: plan.planType, durationDays: plan.durationDays, price: plan.price, allowedDays: plan.allowedDays, maxFrequencyPerWeek: plan.maxFrequencyPerWeek, maxWashes: plan.maxWashes, scope: plan.scope },
       startDate, endDate, durationDays,
       washesAllowed: Number(input.washesAllowed ?? plan.maxWashes),
-      allowedDays: input.allowedDays ?? plan.allowedDays,
+      allowedDays: input.allowedDays ?? autoDays,
       frequencyPerWeek: Number(input.frequencyPerWeek ?? plan.maxFrequencyPerWeek),
       price: String(price), discount: String(discount), finalAmount: String(finalAmount),
       paymentMethod: input.paymentMethod || 'bank_transfer', paymentStatus,

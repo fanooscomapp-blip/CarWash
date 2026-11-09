@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm';
 import { db, schema } from '../db/index.js';
 
 export const SETTING_DEFAULTS = {
-  general: { expiringSoonDays: 7, defaultWashingDays: [0, 1, 2, 3, 4, 5, 6], weekStartsOn: 6 },
+  general: { expiringSoonDays: 7, defaultWashingDays: [6, 0, 1, 2, 3, 4], weekStartsOn: 6 },
   // Payment collection: InstaPay (default for Egypt). Shown to owners on the renewal page.
   payment: { method: 'instapay', instapayAddress: '', instapayName: '', instapayLink: '', instructions: '', instructionsAr: '' },
   bank: { bankName: '', accountName: '', accountNumber: '', iban: '', instructions: '' },

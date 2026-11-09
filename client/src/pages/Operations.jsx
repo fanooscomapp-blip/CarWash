@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Shuffle, Plus, XCircle, MapPin, Camera, Clock, AlertTriangle, Inbox, CalendarOff, ChevronDown } from 'lucide-react';
+import { Shuffle, Plus, XCircle, MapPin, Camera, Clock, AlertTriangle, Inbox, CalendarOff, GripVertical, UserRound, BarChart3, Sparkles } from 'lucide-react';
 import { useQuery, useLookups } from '../lib/hooks.js';
 import { useI18n } from '../lib/i18n.jsx';
 import { useAuth } from '../lib/auth.jsx';
@@ -47,55 +47,6 @@ function TaskDetailModal({ taskId, onClose, outcomeLabel }) {
 
 const durationMin = (a, b) => (a && b ? Math.round((new Date(b) - new Date(a)) / 60000) : null);
 
-function TaskCard({ task, staffOptions, onMove, onCancel, canManage, t, dragging, setDragging, onOpen }) {
-  const started = ['in_progress', 'completed'].includes(task.status);
-  const dur = durationMin(task.start_time, task.end_time);
-  const gps = mapsLink(task.gps_lat, task.gps_lng);
-  return (
-    <div draggable={canManage && !started} onDragStart={() => setDragging(task.id)} onDragEnd={() => setDragging(null)}
-      className={`rounded-xl border bg-white p-3 shadow-sm transition ${dragging === task.id ? 'opacity-40' : ''} ${task.status === 'completed' ? 'border-emerald-200' : task.status === 'in_progress' ? 'border-blue-300' : task.status === 'skipped' ? 'border-orange-200' : 'border-slate-200'} ${canManage && !started ? 'cursor-grab active:cursor-grabbing' : ''}`}>
-      <div className="flex items-start justify-between gap-2 cursor-pointer" onClick={() => onOpen?.(task)}>
-        <PlateEG plate={task.plate_number} size="sm" />
-        <ColoredCar type={task.vehicle_type} color={task.color} className="h-7 w-14" />
-      </div>
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        <BrandBadge brand={task.brand} model={task.model} />
-        <span className="chip bg-navy-900 text-white font-mono">{task.unit_number}</span>
-      </div>
-      <p className="mt-1.5 text-xs text-slate-600 truncate"><Link to={`/vehicles/${task.vehicle_id}`} className="hover:underline">{task.owner_name}</Link> · {task.compound_name}</p>
-      {(task.parking_location || gps) && <p className="mt-1 text-xs text-slate-500 flex items-center gap-1 truncate"><MapPin size={12} className="shrink-0" />{task.parking_location || ''}{gps && <a href={gps} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline ms-1">{t('ops.map')}</a>}</p>}
-      <div className="mt-2 flex items-center justify-between gap-2 text-xs">
-        <div className="flex items-center gap-1.5"><StatusBadge status={task.status === 'skipped' ? 'issue_reported' : task.status} label={task.status === 'skipped' ? (task.outcome_label || t('ops.skipped')) : undefined} />{task.photos > 0 && <span className="inline-flex items-center gap-0.5 text-slate-500"><Camera size={12} />{task.photos}</span>}{dur !== null && <span className="inline-flex items-center gap-0.5 text-slate-500"><Clock size={12} />{dur} {t('ops.min')}</span>}</div>
-        <span className="text-slate-400">{task.washes_used}/{task.washes_allowed}</span>
-      </div>
-      {canManage && !started && (
-        <div className="mt-2 flex items-center gap-1">
-          <div className="relative flex-1"><select className="input !py-1 !text-xs !pe-6 appearance-none" value="" onChange={(e) => e.target.value && onMove(task, e.target.value === '__pool' ? null : e.target.value)}>
-            <option value="">{t('ops.moveTo')}</option>
-            {task.assigned_to && <option value="__pool">{t('ops.pool')}</option>}
-            {staffOptions.filter((s) => s.id !== task.assigned_to && (s.compound_ids || []).includes(task.compound_id)).map((s) => <option key={s.id} value={s.id}>{s.name}{s.on_leave ? ` (${t('staff.onLeave')})` : ''}</option>)}
-          </select><ChevronDown size={12} className="absolute end-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" /></div>
-          <button className="btn-secondary btn-sm !px-1.5 text-red-600" title={t('common.cancel')} onClick={() => onCancel(task)}><XCircle size={14} /></button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Column({ title, subtitle, tasks, tone = 'default', onDropTask, children, badge }) {
-  const [over, setOver] = useState(false);
-  return (
-    <div onDragOver={(e) => { if (onDropTask) { e.preventDefault(); setOver(true); } }} onDragLeave={() => setOver(false)} onDrop={(e) => { e.preventDefault(); setOver(false); onDropTask?.(); }}
-      className={`flex w-72 shrink-0 flex-col rounded-2xl border ${over ? 'border-brand-500 bg-brand-50/50' : tone === 'pool' ? 'border-dashed border-slate-300 bg-slate-50' : tone === 'off' ? 'border-slate-200 bg-slate-100/70' : 'border-slate-200 bg-slate-50/60'}`}>
-      <div className="flex items-center justify-between px-3 py-2.5 border-b border-slate-200/70">
-        <div className="min-w-0"><p className="font-semibold text-sm text-navy-900 truncate">{title}</p>{subtitle && <p className="text-[11px] text-slate-500 truncate">{subtitle}</p>}</div>
-        {badge}
-      </div>
-      <div className="flex-1 space-y-2 p-2 min-h-24">{children}{!tasks.length && <p className="text-center text-xs text-slate-400 py-6">—</p>}</div>
-    </div>
-  );
-}
-
 function AddTaskModal({ date, staff, onClose, onSaved }) {
   const { t } = useI18n(); const toast = useToast();
   const [vehicle, setVehicle] = useState(null); const [userId, setUserId] = useState(''); const [busy, setBusy] = useState(false);
@@ -115,23 +66,80 @@ function AddTaskModal({ date, staff, onClose, onSaved }) {
   );
 }
 
+
+function TaskRow({ task, staffOptions, onMove, onCancel, canManage, t, dragging, setDragging, onOpen }) {
+  const started = ['in_progress', 'completed'].includes(task.status);
+  const dur = durationMin(task.start_time, task.end_time);
+  const gps = mapsLink(task.gps_lat, task.gps_lng);
+  const draggable = canManage && !started;
+  return (
+    <tr draggable={draggable} onDragStart={() => setDragging(task.id)} onDragEnd={() => setDragging(null)}
+      className={`border-b border-slate-100 bg-white hover:bg-slate-50 ${dragging === task.id ? 'opacity-40' : ''} ${draggable ? 'cursor-grab active:cursor-grabbing' : ''}`}>
+      <td className="px-2 py-2 w-8 text-slate-300">{draggable && <GripVertical size={16} />}</td>
+      <td className="px-2 py-2"><button className="flex items-center gap-2 text-start" onClick={() => onOpen(task)}><PlateEG plate={task.plate_number} size="sm" /><ColoredCar type={task.vehicle_type} color={task.color} className="h-6 w-12" /></button></td>
+      <td className="px-2 py-2"><div className="flex flex-col gap-1 items-start"><BrandBadge brand={task.brand} model={task.model} /><span className="chip bg-navy-900 text-white font-mono">{task.unit_number}</span></div></td>
+      <td className="px-2 py-2 text-xs text-slate-600 max-w-[16rem]"><Link to={`/vehicles/${task.vehicle_id}`} className="font-medium text-slate-800 hover:underline">{task.owner_name}</Link><div className="truncate">{task.compound_name}{task.parking_location ? ` · ${task.parking_location}` : ''}{gps && <a href={gps} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline ms-1 inline-flex items-center gap-0.5"><MapPin size={11} />{t('ops.map')}</a>}</div></td>
+      <td className="px-2 py-2 text-xs"><div className="flex flex-col items-start gap-1"><StatusBadge status={task.status === 'skipped' ? 'issue_reported' : task.status} label={task.status === 'skipped' ? (task.outcome_label || t('ops.skipped')) : undefined} /><span className="text-slate-500 flex items-center gap-2 whitespace-nowrap">{task.photos > 0 && <span className="inline-flex items-center gap-0.5"><Camera size={11} />{task.photos}</span>}{dur !== null && <span className="inline-flex items-center gap-0.5"><Clock size={11} />{dur} {t('ops.min')}</span>}<span>{task.washes_used}/{task.washes_allowed}</span></span></div></td>
+      <td className="px-2 py-2 min-w-[10rem]">{canManage && !started ? (
+        <select className="input !py-1 !text-xs min-w-[9rem]" value={task.assigned_to || ''} onChange={(e) => onMove(task, e.target.value || null)}>
+          <option value="">{t('ops.pool')}</option>
+          {staffOptions.filter((s) => (s.compound_ids || []).includes(task.compound_id) || s.id === task.assigned_to).map((s) => <option key={s.id} value={s.id}>{s.name}{s.on_leave ? ` (${t('staff.onLeave')})` : ''}</option>)}
+        </select>) : <span className="text-xs text-slate-600">{task.staff_name || t('ops.pool')}</span>}</td>
+      <td className="px-2 py-2 w-10 text-end">{canManage && !started && <button className="btn-ghost p-1.5 text-red-600" title={t('ops.cancelTask')} onClick={() => onCancel(task)}><XCircle size={15} /></button>}</td>
+    </tr>
+  );
+}
+
+function StaffTile({ title, subtitle, count, done, active, off, onClick, onDropTask, icon }) {
+  const [over, setOver] = useState(false);
+  return (
+    <button onClick={onClick} onDragOver={(e) => { if (onDropTask) { e.preventDefault(); setOver(true); } }} onDragLeave={() => setOver(false)} onDrop={(e) => { e.preventDefault(); setOver(false); onDropTask?.(); }}
+      className={`w-full text-start rounded-xl border px-3 py-2 transition ${over ? 'border-brand-500 bg-brand-50 ring-2 ring-brand-200' : active ? 'border-navy-900 bg-navy-900 text-white' : off ? 'border-slate-200 bg-slate-100 text-slate-500' : 'border-slate-200 bg-white hover:border-slate-400'}`}>
+      <div className="flex items-center gap-2">
+        {icon}
+        <div className="min-w-0 flex-1"><p className="text-sm font-semibold truncate">{title}</p>{subtitle && <p className={`text-[11px] truncate ${active ? 'text-white/70' : 'text-slate-500'}`}>{subtitle}</p>}</div>
+        <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${active ? 'bg-white/20' : done === count && count ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>{done !== undefined && count ? `${done}/` : ''}{count}</span>
+      </div>
+      {count > 0 && done !== undefined && <div className={`mt-1.5 h-1 rounded-full ${active ? 'bg-white/20' : 'bg-slate-100'} overflow-hidden`}><div className="h-full bg-emerald-500" style={{ width: `${(done / count) * 100}%` }} /></div>}
+    </button>
+  );
+}
+
+function DayLoadCard({ compoundId, canManage }) {
+  const { t } = useI18n(); const toast = useToast(); const days = t('common.weekdays');
+  const { data, reload } = useQuery('/admin/subscriptions/day-loads', { compoundId }, { enabled: !!compoundId });
+  const [busy, setBusy] = useState(false);
+  if (!compoundId || !data) return null;
+  const max = Math.max(1, ...Object.values(data.loads));
+  const run = async () => { setBusy(true); try { const { data: r } = await api.post('/admin/subscriptions/auto-assign-days', { compoundId }); toast.success(t('washDays.autoAssigned', { n: r.count })); reload(); } catch (e) { toast.error(e.message); } finally { setBusy(false); } };
+  return (
+    <div className="card p-3 mb-4 flex flex-wrap items-end gap-4">
+      <div className="flex-1 min-w-[16rem]"><p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2 flex items-center gap-1"><BarChart3 size={14} />{t('washDays.load')}</p>
+        <div className="flex items-end gap-1.5 h-16">{[6, 0, 1, 2, 3, 4, 5].map((d) => <div key={d} className="flex-1 flex flex-col items-center justify-end gap-0.5 h-full"><span className="text-[10px] text-slate-600 font-semibold">{data.loads[d] || 0}</span><div className="w-full rounded-t bg-brand-500/80" style={{ height: `${Math.max(2, ((data.loads[d] || 0) / max) * 44)}px` }} /><span className="text-[10px] text-slate-400">{days[d].slice(0, 3)}</span></div>)}</div></div>
+      {data.unbalanced > 0 && canManage && <div className="text-xs text-orange-800 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 max-w-sm"><p className="mb-1.5">{t('washDays.autoAssignHint', { n: data.unbalanced })}</p><button className="btn-primary btn-sm" disabled={busy} onClick={run}>{busy ? <Spinner /> : <Sparkles size={14} />}{t('washDays.autoAssign')}</button></div>}
+    </div>
+  );
+}
+
 export default function Operations() {
   const { t, lang } = useI18n(); const { can } = useAuth(); const toast = useToast(); const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const date = params.get('date') || todayISO(); const compoundId = params.get('compoundId') || '';
+  const date = params.get('date') || todayISO(); const compoundId = params.get('compoundId') || ''; const focus = params.get('staff') || '';
   const setP = (patch) => { const n = new URLSearchParams(params); Object.entries(patch).forEach(([k, v]) => (v ? n.set(k, v) : n.delete(k))); setParams(n, { replace: true }); };
   const lookups = useLookups();
   const { data, loading, error, reload } = useQuery('/admin/staff/board', { date, compoundId });
-  const [detail, setDetail] = useState(null); const [dragging, setDragging] = useState(null); const [cancel, setCancel] = useState(null); const [cancelBusy, setCancelBusy] = useState(false); const [adding, setAdding] = useState(false); const [distBusy, setDistBusy] = useState(false);
+  const [detail, setDetail] = useState(null); const [dragging, setDragging] = useState(null); const [cancel, setCancel] = useState(null); const [cancelBusy, setCancelBusy] = useState(false); const [adding, setAdding] = useState(false); const [distBusy, setDistBusy] = useState(false); const [showLoad, setShowLoad] = useState(false);
   const canManage = can('operations.manage');
   const today = todayISO(), tomorrow = addDaysISO(today, 1);
   const outcomes = useQuery('/admin/settings', {}, { enabled: can('settings.manage') });
   const outcomeLabel = (key) => { const o = (outcomes.data?.settings?.outcomes || []).find((x) => x.key === key); return o ? (lang === 'ar' ? o.labelAr : o.labelEn) : key; };
 
-  const tasks = useMemo(() => (data?.tasks || []).map((x) => ({ ...x, outcome_label: x.outcome ? outcomeLabel(x.outcome) : null })), [data, outcomes.data, lang]);
   const staff = useMemo(() => (data?.staff || []).filter((s) => !compoundId || (s.compound_ids || []).includes(compoundId)), [data, compoundId]);
+  const staffName = (id) => staff.find((s) => s.id === id)?.name;
+  const tasks = useMemo(() => (data?.tasks || []).map((x) => ({ ...x, outcome_label: x.outcome ? outcomeLabel(x.outcome) : null, staff_name: staffName(x.assigned_to) })), [data, outcomes.data, lang, staff]); // eslint-disable-line react-hooks/exhaustive-deps
   const pool = tasks.filter((x) => !x.assigned_to);
   const byStaff = (id) => tasks.filter((x) => x.assigned_to === id);
+  const doneOf = (list) => list.filter((x) => ['completed', 'skipped'].includes(x.status)).length;
   const totals = { total: tasks.length, done: tasks.filter((x) => x.status === 'completed').length, running: tasks.filter((x) => x.status === 'in_progress').length, skipped: tasks.filter((x) => x.status === 'skipped').length };
 
   const move = async (task, userId) => { try { await api.post(`/admin/staff/board/tasks/${task.id}/assign`, { userId }); reload(); } catch (e) { toast.error(e.message); } };
@@ -139,9 +147,14 @@ export default function Operations() {
   const doCancel = async (reason) => { setCancelBusy(true); try { await api.post(`/admin/staff/board/tasks/${cancel.id}/cancel`, { reason }); setCancel(null); reload(); } catch (e) { toast.error(e.message); } finally { setCancelBusy(false); } };
   const dropOn = (userId) => { const task = tasks.find((x) => x.id === dragging); setDragging(null); if (task && task.assigned_to !== userId) move(task, userId); };
 
+  // Groups shown in the main list: pool + each staff (or just the focused one)
+  const groups = [{ id: '', name: t('ops.pool'), list: pool, pool: true }, ...staff.map((s) => ({ id: s.id, name: s.name, list: byStaff(s.id), off: s.on_leave || !s.works_today, s }))].filter((g) => (focus ? (focus === 'pool' ? g.pool : g.id === focus) : g.list.length > 0 || g.pool));
+  const rowProps = { staffOptions: staff, onMove: move, onCancel: setCancel, canManage, t, dragging, setDragging, onOpen: (x) => setDetail(x.id) };
+
   return (
     <div>
       <PageHeader title={t('ops.title')} subtitle={t('ops.subtitle')} actions={<>
+        <button className="btn-secondary" onClick={() => setShowLoad((v) => !v)}><BarChart3 size={16} />{t('washDays.load')}</button>
         {canManage && <button className="btn-secondary" onClick={() => setAdding(true)}><Plus size={16} />{t('ops.addTask')}</button>}
         {canManage && <button className="btn-primary" disabled={distBusy} onClick={() => distribute(compoundId)}>{distBusy ? <Spinner /> : <Shuffle size={16} />}{t('ops.distribute')}</button>}
       </>} />
@@ -151,7 +164,7 @@ export default function Operations() {
           {[[today, t('common.today')], [tomorrow, t('ops.tomorrow')]].map(([d, label]) => <button key={d} onClick={() => setP({ date: d })} className={`px-3 py-1.5 text-sm font-medium ${date === d ? 'bg-navy-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>{label}</button>)}
         </div>
         <Input type="date" value={date} onChange={(e) => setP({ date: e.target.value })} className="!w-auto" />
-        <Select value={compoundId} onChange={(e) => setP({ compoundId: e.target.value })} className="!w-auto"><option value="">{t('ops.allCompounds')}</option>{lookups.data?.compounds.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>
+        <Select value={compoundId} onChange={(e) => setP({ compoundId: e.target.value, staff: '' })} className="!w-auto"><option value="">{t('ops.allCompounds')}</option>{lookups.data?.compounds.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>
         <div className="ms-auto flex flex-wrap gap-2 text-xs">
           <span className="chip bg-slate-100 text-slate-700">{t('ops.tasks')}: <b>{totals.total}</b></span>
           <span className="chip bg-emerald-50 text-emerald-700">{t('status.completed')}: <b>{totals.done}</b></span>
@@ -159,6 +172,8 @@ export default function Operations() {
           {totals.skipped > 0 && <span className="chip bg-orange-50 text-orange-700">{t('ops.skipped')}: <b>{totals.skipped}</b></span>}
         </div>
       </div>
+
+      {showLoad && (compoundId ? <DayLoadCard compoundId={compoundId} canManage={can('subscriptions.manage')} /> : <p className="mb-4 text-sm text-slate-500">{t('washDays.pickCompound')}</p>)}
 
       {!!data?.pendingEligible?.length && (
         <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-800">
@@ -169,24 +184,35 @@ export default function Operations() {
       )}
 
       {error ? <ErrorBox error={error} onRetry={reload} /> : loading && !data ? <Loading /> : (
-        <div className="flex gap-3 overflow-x-auto pb-4 -mx-1 px-1">
-          <Column title={t('ops.pool')} subtitle={t('ops.poolHint')} tasks={pool} tone="pool" onDropTask={canManage ? () => dropOn(null) : null} badge={<span className="chip bg-slate-200 text-slate-700">{pool.length}</span>}>
-            {pool.map((x) => <TaskCard key={x.id} task={x} staffOptions={staff} onMove={move} onCancel={setCancel} canManage={canManage} t={t} dragging={dragging} setDragging={setDragging} onOpen={(x) => setDetail(x.id)} />)}
-          </Column>
-          {staff.map((s) => {
-            const mine = byStaff(s.id); const done = mine.filter((x) => x.status === 'completed').length; const off = s.on_leave || !s.works_today;
-            return (
-              <Column key={s.id} title={s.name} subtitle={s.on_leave ? t('staff.onLeave') : !s.works_today ? t('ops.dayOff') : `${done}/${mine.length} ${t('status.completed').toLowerCase()}`} tasks={mine} tone={off ? 'off' : 'default'} onDropTask={canManage ? () => dropOn(s.id) : null}
-                badge={off ? <CalendarOff size={16} className="text-slate-400" /> : <span className={`chip ${done === mine.length && mine.length ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700'}`}>{mine.length}</span>}>
-                {mine.map((x) => <TaskCard key={x.id} task={x} staffOptions={staff} onMove={move} onCancel={setCancel} canManage={canManage} t={t} dragging={dragging} setDragging={setDragging} onOpen={(x) => setDetail(x.id)} />)}
-              </Column>
-            );
-          })}
-          {!staff.length && <div className="flex-1 flex flex-col items-center justify-center text-slate-500 py-16"><Inbox size={32} className="text-slate-300 mb-2" /><p>{t('ops.noStaff')}</p><button className="btn-secondary btn-sm mt-3" onClick={() => navigate('/staff')}>{t('nav.staff')}</button></div>}
+        <div className="grid lg:grid-cols-[15rem_1fr] gap-4 items-start">
+          {/* Staff panel: sticky, drop targets + filter */}
+          <aside className="lg:sticky lg:top-20 space-y-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-1">{t('ops.dropHint')}</p>
+            <StaffTile title={t('ops.all')} count={tasks.length} active={!focus} onClick={() => setP({ staff: '' })} />
+            <StaffTile title={t('ops.pool')} subtitle={t('ops.poolHint')} count={pool.length} active={focus === 'pool'} onClick={() => setP({ staff: focus === 'pool' ? '' : 'pool' })} onDropTask={canManage ? () => dropOn(null) : null} icon={<Inbox size={16} className="text-slate-400" />} />
+            {staff.map((s) => { const mine = byStaff(s.id); const off = s.on_leave || !s.works_today; return (
+              <StaffTile key={s.id} title={s.name} subtitle={s.on_leave ? t('staff.onLeave') : !s.works_today ? t('ops.dayOff') : s.employee_code} count={mine.length} done={doneOf(mine)} off={off} active={focus === s.id} onClick={() => setP({ staff: focus === s.id ? '' : s.id })} onDropTask={canManage ? () => dropOn(s.id) : null} icon={off ? <CalendarOff size={16} className="text-slate-400" /> : <UserRound size={16} className={focus === s.id ? 'text-white/80' : 'text-slate-400'} />} />); })}
+            {!staff.length && <button className="btn-secondary btn-sm w-full" onClick={() => navigate('/staff')}>{t('ops.noStaff')} →</button>}
+          </aside>
+
+          {/* Task list grouped by staff */}
+          <div className="card overflow-hidden">
+            {!tasks.length && <div className="py-16 text-center text-slate-500"><Inbox size={32} className="mx-auto text-slate-300 mb-2" /><p>{t('ops.noTasks')}</p></div>}
+            {tasks.length > 0 && <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500"><tr><th className="w-8" /><th className="px-2 py-2 text-start">{t('common.vehicle')}</th><th className="px-2 py-2 text-start">{t('common.unit')}</th><th className="px-2 py-2 text-start">{t('common.owner')} · {t('common.location')}</th><th className="px-2 py-2 text-start">{t('common.status')}</th><th className="px-2 py-2 text-start">{t('nav.staff')}</th><th /></tr></thead>
+              {groups.map((g) => (
+                <tbody key={g.id || 'pool'}>
+                  <tr className={`${g.pool ? 'bg-amber-50/60' : 'bg-slate-100/80'}`}><td colSpan={7} className="px-3 py-1.5 text-xs font-semibold text-slate-700"><div className="flex items-center gap-2">{g.pool ? <Inbox size={13} /> : <UserRound size={13} />}{g.name}<span className="font-normal text-slate-500">· {g.list.length}{!g.pool && g.list.length ? ` · ${doneOf(g.list)} ${t('status.completed').toLowerCase()}` : ''}</span>{g.off && <span className="chip bg-slate-200 text-slate-600">{g.s?.on_leave ? t('staff.onLeave') : t('ops.dayOff')}</span>}</div></td></tr>
+                  {g.list.map((x) => <TaskRow key={x.id} task={x} {...rowProps} />)}
+                  {!g.list.length && <tr><td colSpan={7} className="px-3 py-3 text-center text-xs text-slate-400">—</td></tr>}
+                </tbody>
+              ))}
+            </table>}
+          </div>
         </div>
       )}
 
-      {!!data?.runs?.length && <div className="card p-4 mt-2"><p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">{t('ops.runs')}</p>
+      {!!data?.runs?.length && <div className="card p-4 mt-4"><p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">{t('ops.runs')}</p>
         <ul className="text-xs text-slate-600 space-y-1">{data.runs.map((r) => <li key={r.id}>{fmtDateTime(r.createdAt)} · <b>{t(`ops.trigger.${r.trigger}`)}</b>{r.compound_name && ` · ${r.compound_name}`}{r.summary?.assigned !== undefined && ` · ${r.summary.eligible} → ${r.summary.assigned} ${t('ops.assignedN')}${r.summary.pooled ? `, ${r.summary.pooled} ${t('ops.pool').toLowerCase()}` : ''}`}{r.summary?.moved && ` · ${t('staff.movedTasks', { n: r.summary.total })}`}</li>)}</ul></div>}
 
       {detail && <TaskDetailModal taskId={detail} onClose={() => setDetail(null)} outcomeLabel={outcomeLabel} />}

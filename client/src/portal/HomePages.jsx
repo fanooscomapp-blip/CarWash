@@ -20,7 +20,8 @@ export function VehicleCard({ v, onClick }) {
       {v.subscriptionId && (
         <div className="mt-3 space-y-2">
           <div className="flex items-center justify-between text-sm"><span className="text-slate-600">{pName(v, lang)}</span><span className={`font-semibold ${v.daysRemaining < 0 ? 'text-red-600' : v.daysRemaining <= 7 ? 'text-orange-600' : 'text-slate-700'}`}>{v.daysRemaining >= 0 ? t('daysLeft', { n: v.daysRemaining }) : t('expiredAgo', { n: -v.daysRemaining })}</span></div>
-          <div><div className="flex justify-between text-xs text-slate-500 mb-1"><span>{t('washesUsed', { u: v.washesUsed, a: v.washesAllowed })}</span><span>{t('expiresOn')} {fmtDate(v.endDate, lang)}</span></div><div className="h-2 rounded-full bg-slate-100"><div className={`h-2 rounded-full ${pct >= 100 ? 'bg-red-500' : 'bg-brand-600'}`} style={{ width: `${pct}%` }} /></div></div>
+          <div><div className="flex justify-between text-xs text-slate-500 mb-1"><span>{t('washesUsed', { u: v.washesUsed, a: v.washesAllowed })}</span><span>{t('expiresOn')} {fmtDate(v.endDate, lang)}</span></div><div className="flex items-center gap-2"><div className="h-2.5 flex-1 rounded-full bg-slate-100"><div className={`h-2.5 rounded-full transition-all ${pct >= 100 ? 'bg-red-500' : 'bg-brand-600'}`} style={{ width: `${pct}%` }} /></div><span className="text-sm font-bold text-navy-900 tabular-nums" dir="ltr">{v.washesUsed}/{v.washesAllowed}</span></div></div>
+          {Array.isArray(v.allowedDays) && <div><p className="text-[11px] text-slate-500 mb-1">{t('allowedDays')} · {t('perWeek', { n: v.frequencyPerWeek })}</p><div className="flex gap-1">{[6, 0, 1, 2, 3, 4, 5].map((d) => <span key={d} className={`flex-1 rounded-md py-1 text-center text-[11px] font-medium ${v.allowedDays.includes(d) ? 'bg-navy-900 text-white' : 'bg-slate-100 text-slate-300'}`}>{t('wk')[d]}</span>)}</div></div>}
         </div>
       )}
     </Card>

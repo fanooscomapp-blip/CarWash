@@ -196,7 +196,7 @@ router.get('/me', ownerAuth, wrap(async (req, res) => {
   const vehicleRows = await db.select({
     id: vehicles.id, plateNumber: vehicles.plateNumber, brand: vehicles.brand, model: vehicles.model, color: vehicles.color, vehicleType: vehicles.vehicleType, parkingLocation: vehicles.parkingLocation, unitNumber: units.unitNumber, compoundName: compounds.name,
     subscriptionId: currentSub('s.id'), subscriptionStatus: currentSub('s.status'), planName: currentSub("s.plan_snapshot->>'name'"), planNameAr: currentSub("s.plan_snapshot->>'nameAr'"), startDate: currentSub('s.start_date::text'), endDate: currentSub('s.end_date::text'),
-    washesAllowed: currentSub('s.washes_allowed').mapWith(Number), washesUsed: currentSub('s.washes_used').mapWith(Number), daysRemaining: currentSub('(s.end_date - CURRENT_DATE)::int').mapWith(Number),
+    washesAllowed: currentSub('s.washes_allowed').mapWith(Number), washesUsed: currentSub('s.washes_used').mapWith(Number), daysRemaining: currentSub('(s.end_date - CURRENT_DATE)::int').mapWith(Number), allowedDays: currentSub('s.allowed_days'), frequencyPerWeek: currentSub('s.frequency_per_week').mapWith(Number),
   }).from(vehicles).innerJoin(units, eq(units.id, vehicles.unitId)).innerJoin(compounds, eq(compounds.id, vehicles.compoundId)).where(and(eq(vehicles.ownerId, o.id), eq(vehicles.status, 'active'))).orderBy(vehicles.plateNumber);
   const [stats] = await db.execute(sql`SELECT
       count(*) FILTER (WHERE status IN ('active','expiring_soon'))::int AS active, count(*) FILTER (WHERE status='expiring_soon')::int AS expiring, count(*) FILTER (WHERE status='expired')::int AS expired,

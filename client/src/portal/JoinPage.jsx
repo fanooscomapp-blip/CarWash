@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom';
-import { Car, Plus, Trash2, Check, Upload, FileImage, AlertTriangle, Clock, Search } from 'lucide-react';
+import { Car, Plus, Trash2, Check, Upload, FileImage, AlertTriangle, Clock, Search, LocateFixed } from 'lucide-react';
 import { papi, usePortal, fmtMoney, fmtDate } from './portalLib.jsx';
 import { PortalShell, Card, BigButton, Spinner, Center } from './PortalLayout.jsx';
 import PaymentBox from './PaymentBox.jsx';
 import BodyIcon from '../components/BodyIcons.jsx';
 
-const newVehicle = () => ({ key: Math.random().toString(36).slice(2), plateNumber: '', brand: '', model: '', color: 'white', vehicleType: 'sedan' });
+const newVehicle = () => ({ key: Math.random().toString(36).slice(2), plateNumber: '', brand: '', model: '', color: 'white', vehicleType: 'sedan', parkingLocation: '', gpsLat: null, gpsLng: null });
 const colorName = (t, k) => ({ ar: { white: 'أبيض', black: 'أسود', silver: 'فضي', grey: 'رمادي', blue: 'أزرق', navy: 'كحلي', red: 'أحمر', maroon: 'عنابي', green: 'أخضر', beige: 'بيج', brown: 'بني', gold: 'ذهبي', orange: 'برتقالي', yellow: 'أصفر', purple: 'بنفسجي', other: 'أخرى' }, en: { white: 'White', black: 'Black', silver: 'Silver', grey: 'Grey', blue: 'Blue', navy: 'Navy', red: 'Red', maroon: 'Maroon', green: 'Green', beige: 'Beige', brown: 'Brown', gold: 'Gold', orange: 'Orange', yellow: 'Yellow', purple: 'Purple', other: 'Other' } })[t][k] || k;
 const BODY_AR = { sedan: 'سيدان', suv: 'دفع رباعي', hatchback: 'هاتشباك', crossover: 'كروس أوفر', pickup: 'بيك أب', van: 'فان', coupe: 'كوبيه', minivan: 'ميني فان', motorcycle: 'دراجة نارية', other: 'أخرى' };
 const BODY_EN = { sedan: 'Sedan', suv: 'SUV', hatchback: 'Hatchback', crossover: 'Crossover', pickup: 'Pickup', van: 'Van', coupe: 'Coupe', minivan: 'Minivan', motorcycle: 'Motorcycle', other: 'Other' };
@@ -29,6 +29,8 @@ export default function JoinPage() {
   const cur = cfg?.company?.currency || 'EGP';
   const eligiblePlans = useMemo(() => (cfg?.plans || []).filter((p) => vehicles.length <= p.maxVehicles && (p.scope !== 'per_vehicle' || vehicles.length === 1)), [cfg, vehicles.length]);
   useEffect(() => { if (eligiblePlans.length && !eligiblePlans.some((p) => p.id === planId)) setPlanId(eligiblePlans[0].id); }, [eligiblePlans]); // eslint-disable-line
+  const [gpsBusy, setGpsBusy] = useState(null);
+  const captureGps = (key) => { if (!navigator.geolocation) return setSubmitErr(t('joinGpsUnsupported')); setGpsBusy(key); navigator.geolocation.getCurrentPosition((pos) => { setGpsBusy(null); upd(key, { gpsLat: +pos.coords.latitude.toFixed(6), gpsLng: +pos.coords.longitude.toFixed(6) }); }, () => { setGpsBusy(null); setSubmitErr(t('joinGpsDenied')); }, { enableHighAccuracy: true, timeout: 10000 }); };
   const priceOf = (p) => { const vt = vehicles[0]?.vehicleType; const o = p.overrides.find((x) => x.compoundId === compoundId && x.vehicleType === vt) || p.overrides.find((x) => x.compoundId === compoundId && !x.vehicleType) || p.overrides.find((x) => !x.compoundId && x.vehicleType === vt); return o ? o.price : p.price; };
   const plan = eligiblePlans.find((p) => p.id === planId);
   const pName = (p) => (lang === 'ar' && p?.nameAr) ? p.nameAr : p?.name;
@@ -74,6 +76,12 @@ export default function JoinPage() {
             </div>
             <div><Lbl>{t('joinBody')}</Lbl><div className="grid grid-cols-4 gap-2">{bodies.map((b) => <button type="button" key={b} onClick={() => upd(v.key, { vehicleType: b })} className={`flex flex-col items-center gap-1 rounded-xl border px-1 py-2 ${v.vehicleType === b ? 'bg-navy-900 text-white border-navy-900' : 'bg-white text-slate-600 border-slate-300'}`}><BodyIcon type={b} className="h-6 w-12" /><span className="text-[11px] font-medium leading-tight text-center">{B[b]}</span></button>)}</div></div>
             <div><Lbl>{t('joinColor')} · {colorName(lang, v.color)}</Lbl><div className="flex flex-wrap gap-2">{colors.map((c) => <button type="button" key={c.key} onClick={() => upd(v.key, { color: c.key })} className={`h-9 w-9 rounded-full border ${v.color === c.key ? 'ring-2 ring-offset-2 ring-brand-600 border-transparent' : 'border-slate-300'}`} style={{ background: c.hex }}>{v.color === c.key && <Check size={16} className={`mx-auto ${['white', 'beige', 'yellow', 'silver'].includes(c.key) ? 'text-slate-800' : 'text-white'}`} />}</button>)}</div></div>
+            <div className="grid grid-cols-1 gap-2">
+              <label><Lbl>{t('joinLocation')}</Lbl><input className={inp} value={v.parkingLocation} placeholder={t('joinLocationPh')} onChange={(e) => upd(v.key, { parkingLocation: e.target.value })} /></label>
+              {v.gpsLat ? <div className="flex items-center gap-2 text-sm"><a className="flex-1 truncate rounded-xl border border-slate-300 px-3 py-2 text-brand-600" dir="ltr" href={`https://maps.google.com/?q=${v.gpsLat},${v.gpsLng}`} target="_blank" rel="noreferrer">📍 {v.gpsLat}, {v.gpsLng}</a><button type="button" className="rounded-xl border border-slate-300 px-3 py-2 text-slate-500" onClick={() => upd(v.key, { gpsLat: null, gpsLng: null })}>✕</button></div>
+                : <button type="button" disabled={gpsBusy === v.key} onClick={() => captureGps(v.key)} className="w-full rounded-xl border border-slate-300 bg-white py-2.5 text-sm font-semibold text-slate-700 flex items-center justify-center gap-2"><LocateFixed size={16} />{gpsBusy === v.key ? '…' : t('joinGps')}</button>}
+              <p className="text-[11px] text-slate-400">{t('joinLocationHint')}</p>
+            </div>
           </Card>
         ))}
         {vehicles.length < 5 && <button type="button" onClick={() => setVehicles((vs) => [...vs, newVehicle()])} className="w-full rounded-2xl border-2 border-dashed border-slate-300 py-3 text-sm font-semibold text-slate-600 flex items-center justify-center gap-2"><Plus size={16} />{t('joinAddVehicle')}</button>}

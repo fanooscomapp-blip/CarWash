@@ -3,6 +3,7 @@ import { useI18n } from '../lib/i18n.jsx';
 import { useAuth } from '../lib/auth.jsx';
 import { useQuery } from '../lib/hooks.js';
 import { api } from '../lib/api.js';
+import WashDaysPicker from './WashDaysPicker.jsx';
 import { fmtDate, fmtMoney, todayISO, addDaysISO } from '../lib/format.js';
 import { Modal, Field, Input, Select, Spinner, useToast, StatusBadge, Textarea } from './ui.jsx';
 
@@ -13,7 +14,7 @@ export default function RenewModal({ open, onClose, subscription, onRenewed }) {
   const cur = company?.currency || 'EGP';
   const plans = useQuery('/admin/plans', { active: 'true' });
   const defaultStart = subscription.endDate >= todayISO() ? addDaysISO(subscription.endDate, 1) : todayISO();
-  const [form, setForm] = useState({ planId: subscription.planId, startDate: defaultStart, discount: 0, paymentMethod: subscription.paymentMethod || 'bank_transfer', paymentStatus: 'paid', notes: '' });
+  const [form, setForm] = useState({ planId: subscription.planId, startDate: defaultStart, discount: 0, paymentMethod: subscription.paymentMethod || 'bank_transfer', paymentStatus: 'paid', notes: '', allowedDays: null });
   const [quote, setQuote] = useState(null); const [busy, setBusy] = useState(false); const [error, setError] = useState(null);
   useEffect(() => {
     if (!form.planId) return;
@@ -22,7 +23,7 @@ export default function RenewModal({ open, onClose, subscription, onRenewed }) {
   const price = quote?.price ?? 0; const final = Math.max(0, price - Number(form.discount || 0));
   const submit = async () => {
     setBusy(true); setError(null);
-    try { const { data } = await api.post(`/admin/subscriptions/${subscription.id}/renew`, { ...form, discount: Number(form.discount || 0) }); toast.success(t('renewals.renewed_ok')); onRenewed?.(data); onClose(); }
+    try { const { data } = await api.post(`/admin/subscriptions/${subscription.id}/renew`, { ...form, discount: Number(form.discount || 0), allowedDays: form.allowedDays || undefined }); toast.success(t('renewals.renewed_ok')); onRenewed?.(data); onClose(); }
     catch (e) { setError(e.message); } finally { setBusy(false); }
   };
   return (
@@ -34,12 +35,13 @@ export default function RenewModal({ open, onClose, subscription, onRenewed }) {
       </div>
       <div className="grid sm:grid-cols-2 gap-4">
         <Field label={t('renewals.newPlan')} required className="sm:col-span-2">
-          <Select value={form.planId} onChange={(e) => setForm({ ...form, planId: e.target.value })}>{(plans.data || []).filter((p) => p.scope !== 'per_vehicle' || (subscription.vehicleIds?.length || 1) <= 1).map((p) => <option key={p.id} value={p.id}>{lang === 'ar' && p.nameAr ? p.nameAr : p.name} — {fmtMoney(p.price, cur, lang)} · {p.durationDays} {t('common.days')} · {p.maxWashes} {t('subs.washes').toLowerCase()}</option>)}</Select>
+          <Select value={form.planId} onChange={(e) => setForm({ ...form, planId: e.target.value, allowedDays: null })}>{(plans.data || []).filter((p) => p.scope !== 'per_vehicle' || (subscription.vehicleIds?.length || 1) <= 1).map((p) => <option key={p.id} value={p.id}>{lang === 'ar' && p.nameAr ? p.nameAr : p.name} — {fmtMoney(p.price, cur, lang)} · {p.durationDays} {t('common.days')} · {p.maxWashes} {t('subs.washes').toLowerCase()}</option>)}</Select>
         </Field>
         <Field label={t('renewals.newStart')} hint={t('renewals.startHint')}><Input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} /></Field>
         <Field label={t('subs.discount')}><Input type="number" min="0" step="0.01" value={form.discount} onChange={(e) => setForm({ ...form, discount: e.target.value })} /></Field>
         <Field label={t('subs.paymentMethod')}><Select value={form.paymentMethod} onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}>{['bank_transfer', 'cash', 'other'].map((m) => <option key={m} value={m}>{t(`subs.methods.${m}`)}</option>)}</Select></Field>
         <Field label={t('subs.paymentStatus')}><Select value={form.paymentStatus} onChange={(e) => setForm({ ...form, paymentStatus: e.target.value })}><option value="paid">{t('subs.markPaid')}</option><option value="pending">{t('subs.markPending')}</option></Select></Field>
+        {form.planId && <Field label={t('washDays.title')} className="sm:col-span-2"><WashDaysPicker compoundId={subscription.compoundId} planId={form.planId} unitId={subscription.unitId} excludeSubscriptionId={subscription.id} value={form.allowedDays} onChange={(d) => setForm((f) => ({ ...f, allowedDays: d }))} compact /></Field>}
         <Field label={t('common.notes')} className="sm:col-span-2"><Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></Field>
       </div>
       <div className="mt-4 rounded-lg border border-slate-200 p-4 text-sm grid grid-cols-3 gap-3">

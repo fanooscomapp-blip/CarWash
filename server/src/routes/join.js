@@ -47,7 +47,7 @@ router.get('/config', wrap(async (req, res) => {
   });
 }));
 
-const vehicleRow = z.object({ plateNumber: z.string().min(1).max(40).transform(normalizePlate), brand: z.string().max(80).optional().nullable(), model: z.string().max(80).optional().nullable(), color: z.string().max(40).optional().nullable(), vehicleType: z.enum(BODY_TYPES).default('sedan') });
+const vehicleRow = z.object({ plateNumber: z.string().min(1).max(40).transform(normalizePlate), brand: z.string().max(80).optional().nullable(), model: z.string().max(80).optional().nullable(), color: z.string().max(40).optional().nullable(), vehicleType: z.enum(BODY_TYPES).default('sedan'), parkingLocation: z.string().max(200).optional().nullable(), gpsLat: z.coerce.number().min(-90).max(90).optional().nullable(), gpsLng: z.coerce.number().min(-180).max(180).optional().nullable() });
 const joinSchema = z.object({
   compoundId: z.string().uuid(), ownerName: z.string().min(2).max(200), mobile: z.string().min(6).max(30).transform(normalizeMobile), unitNumber: z.string().min(1).max(40).transform(normalizeUnit),
   vehicles: z.preprocess((v) => (typeof v === 'string' ? JSON.parse(v) : v), z.array(vehicleRow).min(1).max(5)),

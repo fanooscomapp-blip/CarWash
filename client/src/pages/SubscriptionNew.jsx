@@ -6,6 +6,7 @@ import { useAuth } from '../lib/auth.jsx';
 import { useQuery, useLookups } from '../lib/hooks.js';
 import { api } from '../lib/api.js';
 import { fmtDate, fmtMoney, todayISO, addDaysISO } from '../lib/format.js';
+import WashDaysPicker from '../components/WashDaysPicker.jsx';
 import { PageHeader, Field, Input, Select, Textarea, AsyncSelect, Spinner, useToast, DaysPicker, StatusBadge, Toggle } from '../components/ui.jsx';
 
 
@@ -18,7 +19,7 @@ export default function SubscriptionNew() {
   const [unit, setUnit] = useState(null);
   const [unitDetail, setUnitDetail] = useState(null);
   const [vehicleIds, setVehicleIds] = useState(sp.get('vehicleId') ? [sp.get('vehicleId')] : []);
-  const [form, setForm] = useState({ planId: '', startDate: todayISO(), discount: 0, paymentMethod: 'bank_transfer', paymentStatus: 'paid', notes: '', customize: false, durationDays: '', washesAllowed: '', allowedDays: null, frequencyPerWeek: '', price: '' });
+  const [form, setForm] = useState({ planId: '', startDate: todayISO(), discount: 0, paymentMethod: 'bank_transfer', paymentStatus: 'paid', notes: '', customize: false, durationDays: '', washesAllowed: '', allowedDays: null, frequencyPerWeek: '', price: '', washDays: null });
   const [quote, setQuote] = useState(null); const [busy, setBusy] = useState(false); const [error, setError] = useState(null);
 
   // Preselect unit from ?unitId=
@@ -36,7 +37,7 @@ export default function SubscriptionNew() {
   const price = form.customize && form.price !== '' ? Number(form.price) : quote?.price ?? 0;
   const duration = form.customize && form.durationDays ? Number(form.durationDays) : quote?.durationDays ?? plan?.durationDays ?? 0;
   const washes = form.customize && form.washesAllowed ? Number(form.washesAllowed) : quote?.maxWashes ?? plan?.maxWashes ?? 0;
-  const allowedDays = form.customize && form.allowedDays ? form.allowedDays : quote?.allowedDays ?? plan?.allowedDays ?? [];
+  const allowedDays = form.washDays || (form.customize && form.allowedDays ? form.allowedDays : quote?.allowedDays ?? plan?.allowedDays ?? []);
   const final = Math.max(0, price - Number(form.discount || 0));
   const eligiblePlans = (plans.data || []).filter((p) => vehicleIds.length <= 1 || p.scope !== 'per_vehicle');
 
@@ -47,6 +48,7 @@ export default function SubscriptionNew() {
     setBusy(true); setError(null);
     try {
       const payload = { unitId: unit.id, compoundId: unit.compoundId, vehicleIds, planId: form.planId, startDate: form.startDate, discount: Number(form.discount || 0), paymentMethod: form.paymentMethod, paymentStatus: form.paymentStatus, notes: form.notes || null };
+      if (form.washDays) payload.allowedDays = form.washDays;
       if (form.customize) { if (form.durationDays) payload.durationDays = Number(form.durationDays); if (form.washesAllowed) payload.washesAllowed = Number(form.washesAllowed); if (form.allowedDays) payload.allowedDays = form.allowedDays; if (form.frequencyPerWeek) payload.frequencyPerWeek = Number(form.frequencyPerWeek); if (form.price !== '') payload.price = Number(form.price); }
       const { data } = await api.post('/admin/subscriptions', payload);
       toast.success(t('common.success')); navigate(`/subscriptions/${data.subscription.id}`);
@@ -80,7 +82,7 @@ export default function SubscriptionNew() {
         )}
         {step === 2 && (
           <div className="grid sm:grid-cols-2 gap-4">
-            <Field label={t('common.plan')} required className="sm:col-span-2"><Select value={form.planId} onChange={(e) => setForm({ ...form, planId: e.target.value })}><option value="">{t('common.selectPlan')}</option>{eligiblePlans.map((p) => <option key={p.id} value={p.id}>{lang === 'ar' && p.nameAr ? p.nameAr : p.name} — {fmtMoney(p.price, cur, lang)} · {p.durationDays} {t('common.days')} · {p.maxWashes} {t('subs.washes').toLowerCase()} · {t(`plans.scopes.${p.scope}`)}</option>)}</Select></Field>
+            <Field label={t('common.plan')} required className="sm:col-span-2"><Select value={form.planId} onChange={(e) => setForm({ ...form, planId: e.target.value, washDays: null })}><option value="">{t('common.selectPlan')}</option>{eligiblePlans.map((p) => <option key={p.id} value={p.id}>{lang === 'ar' && p.nameAr ? p.nameAr : p.name} — {fmtMoney(p.price, cur, lang)} · {p.durationDays} {t('common.days')} · {p.maxWashes} {t('subs.washes').toLowerCase()} · {t(`plans.scopes.${p.scope}`)}</option>)}</Select></Field>
             {plan && vehicleIds.length > plan.maxVehicles && <p className="sm:col-span-2 text-sm text-red-600">{t('plans.maxVehicles')}: {plan.maxVehicles}</p>}
             <Field label={t('subs.start')} required><Input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} /></Field>
             <Field label={t('subs.discount')}><Input type="number" min="0" step="0.01" value={form.discount} onChange={(e) => setForm({ ...form, discount: e.target.value })} /></Field>
@@ -90,13 +92,13 @@ export default function SubscriptionNew() {
               <div><p className="text-xs text-slate-500">{t('subs.washesAllowed')}</p><p className="font-semibold">{washes}</p></div>
               <div><p className="text-xs text-slate-500">{t('subs.end')}</p><p className="font-semibold">{fmtDate(addDaysISO(form.startDate, duration - 1), lang)}</p></div>
             </div>}
+            {form.planId && <Field label={t('washDays.title')} hint={t('washDays.hint')} className="sm:col-span-2"><WashDaysPicker compoundId={unit.compoundId} planId={form.planId} perWeek={form.customize && form.frequencyPerWeek ? Number(form.frequencyPerWeek) : undefined} unitId={unit.id} value={form.washDays} onChange={(d) => setForm((f) => ({ ...f, washDays: d }))} /></Field>}
             <div className="sm:col-span-2"><Toggle checked={form.customize} onChange={(v) => setForm({ ...form, customize: v })} label={t('subs.wizard.customize')} /></div>
             {form.customize && <>
               <Field label={t('subs.price')}><Input type="number" min="0" step="0.01" placeholder={String(quote?.price ?? '')} value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} /></Field>
               <Field label={t('subs.duration')}><Input type="number" min="1" placeholder={String(quote?.durationDays ?? '')} value={form.durationDays} onChange={(e) => setForm({ ...form, durationDays: e.target.value })} /></Field>
               <Field label={t('subs.washesAllowed')}><Input type="number" min="1" placeholder={String(quote?.maxWashes ?? '')} value={form.washesAllowed} onChange={(e) => setForm({ ...form, washesAllowed: e.target.value })} /></Field>
               <Field label={t('subs.frequency')}><Input type="number" min="1" max="7" placeholder={String(quote?.maxFrequencyPerWeek ?? '')} value={form.frequencyPerWeek} onChange={(e) => setForm({ ...form, frequencyPerWeek: e.target.value })} /></Field>
-              <Field label={t('subs.allowedDays')} className="sm:col-span-2"><DaysPicker value={form.allowedDays || allowedDays} onChange={(v) => setForm({ ...form, allowedDays: v })} /></Field>
             </>}
           </div>
         )}

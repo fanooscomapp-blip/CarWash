@@ -81,11 +81,11 @@ async function seedDemo(company, admin, roleRows) {
 
   const plans = [];
   const plansData = [
-    { name: 'Weekly Shine', nameAr: 'لمعة أسبوعية', planType: 'weekly', durationDays: 7, price: '150', allowedDays: [0, 1, 2, 3, 4, 5, 6], maxFrequencyPerWeek: 2, maxWashes: 2, scope: 'per_vehicle' },
-    { name: 'Monthly Standard', nameAr: 'شهري عادي', planType: 'monthly', durationDays: 30, price: '450', allowedDays: [0, 2, 4], maxFrequencyPerWeek: 3, maxWashes: 12, scope: 'per_vehicle' },
-    { name: 'Monthly Family (2 cars)', nameAr: 'شهري عائلي (سيارتين)', planType: 'monthly', durationDays: 30, price: '800', allowedDays: [0, 1, 2, 3, 4, 5, 6], maxFrequencyPerWeek: 3, maxWashes: 24, scope: 'multi_vehicle', maxVehicles: 2 },
-    { name: 'Quarterly Plus', nameAr: 'ربع سنوي بلس', planType: 'quarterly', durationDays: 90, price: '1200', allowedDays: [0, 1, 2, 3, 4, 5, 6], maxFrequencyPerWeek: 3, maxWashes: 36, scope: 'per_vehicle' },
-    { name: 'Annual Premium', nameAr: 'سنوي بريميوم', planType: 'annual', durationDays: 365, price: '4200', allowedDays: [0, 1, 2, 3, 4, 5, 6], maxFrequencyPerWeek: 3, maxWashes: 150, scope: 'per_vehicle' },
+    { name: 'Weekly Shine', nameAr: 'لمعة أسبوعية', planType: 'weekly', durationDays: 7, price: '150', allowedDays: [6, 0, 1, 2, 3, 4], maxFrequencyPerWeek: 2, maxWashes: 2, scope: 'per_vehicle' },
+    { name: 'Monthly Standard', nameAr: 'شهري عادي', planType: 'monthly', durationDays: 30, price: '450', allowedDays: [6, 0, 1, 2, 3, 4], maxFrequencyPerWeek: 3, maxWashes: 12, scope: 'per_vehicle' },
+    { name: 'Monthly Family (2 cars)', nameAr: 'شهري عائلي (سيارتين)', planType: 'monthly', durationDays: 30, price: '800', allowedDays: [6, 0, 1, 2, 3, 4], maxFrequencyPerWeek: 3, maxWashes: 24, scope: 'multi_vehicle', maxVehicles: 2 },
+    { name: 'Quarterly Plus', nameAr: 'ربع سنوي بلس', planType: 'quarterly', durationDays: 90, price: '1200', allowedDays: [6, 0, 1, 2, 3, 4], maxFrequencyPerWeek: 3, maxWashes: 36, scope: 'per_vehicle' },
+    { name: 'Annual Premium', nameAr: 'سنوي بريميوم', planType: 'annual', durationDays: 365, price: '4200', allowedDays: [6, 0, 1, 2, 3, 4], maxFrequencyPerWeek: 3, maxWashes: 150, scope: 'per_vehicle' },
   ];
   for (const p of plansData) plans.push((await db.insert(schema.subscriptionPlans).values({ ...p, companyId: cid }).returning())[0]);
   await db.insert(schema.planPrices).values([

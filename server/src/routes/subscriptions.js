@@ -6,6 +6,7 @@ import { wrap, notFound } from '../lib/errors.js';
 import { requirePermission } from '../middleware/auth.js';
 import { audit } from '../lib/audit.js';
 import { parsePagination, paged, ilike, today } from '../lib/util.js';
+import { suggestWashDays, dayLoads, busyDays } from '../services/washDaysService.js';
 import { createSubscription, renewSubscription, refreshStatuses, changeSubscriptionStatus, SUB_STATUS } from '../services/subscriptionService.js';
 
 const router = Router();
@@ -111,6 +112,49 @@ router.get('/renewals', requirePermission('subscriptions.view'), wrap(async (req
       count(*) FILTER (WHERE EXISTS (SELECT 1 FROM subscriptions s2 WHERE s2.renewed_from_id = s.id AND s2.status IN ('active','expiring_soon','expired')))::int AS renewed
     FROM subscriptions s WHERE company_id = ${req.companyId} ${compoundId ? sql`AND compound_id = ${compoundId}` : sql``}`).then((r) => (r.rows || r)[0]);
   res.json({ ...paged(rows, count, pg), counters });
+}));
+
+// Wash-day pattern suggestion for the wizard / join approval (load-balanced, same-owner preference)
+router.get('/suggest-days', requirePermission('subscriptions.view'), wrap(async (req, res) => {
+  const q = z.object({ compoundId: z.string().uuid(), planId: z.string().uuid(), perWeek: z.coerce.number().int().min(1).max(7).optional(), ownerId: z.string().uuid().optional(), unitId: z.string().uuid().optional(), excludeSubscriptionId: z.string().uuid().optional() }).parse(req.query);
+  const plan = await db.query.subscriptionPlans.findFirst({ where: and(eq(schema.subscriptionPlans.id, q.planId), eq(schema.subscriptionPlans.companyId, req.companyId)) });
+  if (!plan) throw notFound('Plan');
+  let ownerId = q.ownerId; if (!ownerId && q.unitId) ownerId = (await db.query.units.findFirst({ where: eq(schema.units.id, q.unitId) }))?.ownerId;
+  const perWeek = q.perWeek ?? plan.maxFrequencyPerWeek;
+  const r = await suggestWashDays(req.companyId, { compoundId: q.compoundId, workingDays: plan.allowedDays, perWeek, ownerId, excludeSubscriptionId: q.excludeSubscriptionId });
+  res.json({ ...r, workingDays: plan.allowedDays, perWeek, busy: busyDays(r.loads, plan.allowedDays), fixedPattern: perWeek < plan.allowedDays.length });
+}));
+
+router.get('/day-loads', requirePermission('subscriptions.view'), wrap(async (req, res) => {
+  const { compoundId } = z.object({ compoundId: z.string().uuid() }).parse(req.query);
+  const loads = await dayLoads(req.companyId, compoundId);
+  const unbalanced = (await db.execute(sql`SELECT count(*)::int AS n FROM subscriptions WHERE company_id = ${req.companyId} AND compound_id = ${compoundId} AND payment_status = 'paid' AND status IN ('active','expiring_soon') AND jsonb_array_length(allowed_days) > frequency_per_week`)).rows?.[0]?.n ?? 0;
+  res.json({ loads, unbalanced });
+}));
+
+// One-time fix for existing subscriptions whose allowed days exceed their weekly frequency → give each a balanced fixed pattern
+router.post('/auto-assign-days', requirePermission('subscriptions.manage'), wrap(async (req, res) => {
+  const { compoundId } = z.object({ compoundId: z.string().uuid().optional() }).parse(req.body || {});
+  const list = (await db.execute(sql`SELECT id, compound_id, owner_id, allowed_days, frequency_per_week FROM subscriptions WHERE company_id = ${req.companyId} ${compoundId ? sql`AND compound_id = ${compoundId}` : sql``} AND payment_status = 'paid' AND status IN ('active','expiring_soon') AND jsonb_array_length(allowed_days) > frequency_per_week ORDER BY owner_id, created_at`)).rows;
+  const changed = [];
+  for (const s of list) {
+    const r = await suggestWashDays(req.companyId, { compoundId: s.compound_id, workingDays: s.allowed_days, perWeek: s.frequency_per_week, ownerId: s.owner_id, excludeSubscriptionId: s.id });
+    await db.update(schema.subscriptions).set({ allowedDays: r.suggested, updatedAt: new Date() }).where(eq(schema.subscriptions.id, s.id));
+    changed.push({ id: s.id, from: s.allowed_days, to: r.suggested });
+  }
+  await audit(req, { action: 'subscription.auto_assign_days', entityType: 'subscription', after: { compoundId, count: changed.length } });
+  res.json({ count: changed.length, changed });
+}));
+
+// Exception: customer asks for different days (e.g. travels on Thursday) — admin picks them, frequency unchanged
+router.put('/:id/days', requirePermission('subscriptions.manage'), wrap(async (req, res) => {
+  const { allowedDays } = z.object({ allowedDays: z.array(z.number().int().min(0).max(6)).min(1).max(7) }).parse(req.body);
+  const before = await db.query.subscriptions.findFirst({ where: and(eq(schema.subscriptions.id, req.params.id), eq(schema.subscriptions.companyId, req.companyId)) });
+  if (!before) throw notFound('Subscription');
+  const days = [...new Set(allowedDays)].sort();
+  const [row] = await db.update(schema.subscriptions).set({ allowedDays: days, frequencyPerWeek: Math.min(before.frequencyPerWeek, days.length) || before.frequencyPerWeek, updatedAt: new Date() }).where(eq(schema.subscriptions.id, before.id)).returning();
+  await audit(req, { action: 'subscription.days', entityType: 'subscription', entityId: row.id, before: { allowedDays: before.allowedDays }, after: { allowedDays: row.allowedDays } });
+  res.json(row);
 }));
 
 router.get('/:id', requirePermission('subscriptions.view'), wrap(async (req, res) => {

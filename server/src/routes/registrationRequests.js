@@ -50,7 +50,7 @@ router.get('/:id/receipt', requirePermission('payments.view', 'units.view'), wra
 // Admin can correct data before approving (typos in plate / unit / name)
 const patchSchema = z.object({
   ownerName: z.string().min(2).max(200).optional(), mobile: z.string().min(6).max(30).transform(normalizeMobile).optional(), unitNumber: z.string().min(1).max(40).transform((s) => s.trim().toUpperCase()).optional(),
-  vehicles: z.array(z.object({ plateNumber: z.string().min(1).max(40).transform((s) => s.trim().toUpperCase()), brand: z.string().max(80).optional().nullable(), model: z.string().max(80).optional().nullable(), color: z.string().max(40).optional().nullable(), vehicleType: z.enum(BODY_TYPES).default('sedan') })).min(1).max(5).optional(),
+  vehicles: z.array(z.object({ plateNumber: z.string().min(1).max(40).transform((s) => s.trim().toUpperCase()), brand: z.string().max(80).optional().nullable(), model: z.string().max(80).optional().nullable(), color: z.string().max(40).optional().nullable(), vehicleType: z.enum(BODY_TYPES).default('sedan'), parkingLocation: z.string().max(200).optional().nullable(), gpsLat: z.coerce.number().optional().nullable(), gpsLng: z.coerce.number().optional().nullable() })).min(1).max(5).optional(),
   planId: z.string().uuid().optional(), amount: z.coerce.number().min(0).optional(),
 });
 router.put('/:id', requirePermission('payments.approve', 'units.manage'), wrap(async (req, res) => {
@@ -87,7 +87,7 @@ router.post('/:id/approve', requirePermission('payments.approve'), wrap(async (r
       const dup = await t.query.vehicles.findFirst({ where: and(eq(vehicles.companyId, req.companyId), eq(vehicles.plateNumber, v.plateNumber)) });
       if (dup) throw conflict(`Plate ${v.plateNumber} is already registered (${dup.vehicleCode}) – edit the request first`);
       const vehicleCode = await nextCode(req.companyId, 'vehicle', 'VH', t);
-      const [row] = await t.insert(vehicles).values({ companyId: req.companyId, vehicleCode, plateNumber: v.plateNumber, compoundId: compound.id, unitId: unit.id, ownerId: owner.id, brand: v.brand || null, model: v.model || null, color: v.color || null, vehicleType: v.vehicleType || 'sedan' }).returning();
+      const [row] = await t.insert(vehicles).values({ companyId: req.companyId, vehicleCode, plateNumber: v.plateNumber, compoundId: compound.id, unitId: unit.id, ownerId: owner.id, brand: v.brand || null, model: v.model || null, color: v.color || null, vehicleType: v.vehicleType || 'sedan', parkingLocation: v.parkingLocation || null, gpsLat: v.gpsLat ?? null, gpsLng: v.gpsLng ?? null }).returning();
       await t.insert(qrCodes).values({ vehicleId: row.id, token: crypto.randomBytes(24).toString('base64url') });
       await audit(req, { action: 'vehicle.create', entityType: 'vehicle', entityId: row.id, after: row }, t);
       vehicleIds.push(row.id);
