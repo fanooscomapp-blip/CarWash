@@ -26,6 +26,7 @@ import Operations from './pages/Operations.jsx';
 import SettingsPage from './pages/Settings.jsx';
 import AuditLogs from './pages/AuditLogs.jsx';
 import PortalApp from './portal/PortalApp.jsx';
+import StaffApp from './staff/StaffApp.jsx';
 import SmsCenter from './pages/SmsCenter.jsx';
 import RegistrationRequests from './pages/RegistrationRequests.jsx';
 
@@ -47,6 +48,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/p/*" element={<PortalApp />} />
+      <Route path="/s/*" element={<StaffApp />} />
       <Route path="/login" element={<Login />} />
       <Route element={<Protected><Layout /></Protected>}>
         <Route index element={<Dashboard />} />

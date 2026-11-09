@@ -26,6 +26,7 @@ import portalRouter from './routes/portal.js';
 import joinRouter from './routes/join.js';
 import registrationRequestsRouter from './routes/registrationRequests.js';
 import staffRouter from './routes/staff.js';
+import staffAppRouter from './routes/staffApp.js';
 
 export function createApp() {
   const app = express();
@@ -39,6 +40,7 @@ export function createApp() {
   app.use('/api/auth', authRouter);
   app.use('/api/portal/join', joinRouter); // public self-registration (no login)
   app.use('/api/portal', portalRouter);   // owner portal: link tokens + OTP sessions (no admin JWT)
+  app.use('/api/s', staffAppRouter);      // staff app: employee code + PIN
 
   // Everything below requires a valid session; admin-portal routes additionally require an admin-type user.
   const admin = express.Router();

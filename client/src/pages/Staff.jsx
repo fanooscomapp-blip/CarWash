@@ -91,7 +91,7 @@ export default function Staff() {
   ];
   return (
     <div>
-      <PageHeader title={t('staff.title')} subtitle={t('staff.subtitle')} actions={can('staff.manage') && <button className="btn-primary" onClick={() => setModal({})}><Plus size={16} />{t('staff.add')}</button>} />
+      <PageHeader title={t('staff.title')} subtitle={<>{t('staff.subtitle')} · <a className="text-brand-600 hover:underline" href="/s/login" target="_blank" rel="noreferrer" dir="ltr">{window.location.origin}/s</a></>} actions={can('staff.manage') && <button className="btn-primary" onClick={() => setModal({})}><Plus size={16} />{t('staff.add')}</button>} />
       <div className="card"><DataTable columns={columns} rows={data || []} loading={loading} error={error} onRetry={reload} emptyTitle={t('staff.empty')} /></div>
       {modal && <StaffForm open onClose={() => setModal(null)} initial={modal.id ? modal : null} onSaved={reload} />}
       {leave && <LeaveModal staff={leave} onClose={() => setLeave(null)} onSaved={reload} />}
