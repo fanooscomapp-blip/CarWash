@@ -57,8 +57,8 @@ export default function Dashboard() {
             <KpiCard label={t('dashboard.pendingRenewals')} value={fmtNum(k.pending_renewals, lang)} icon={RefreshCw} tone="warning" onClick={() => navigate('/renewals?filter=pending')} />
             <KpiCard label={t('dashboard.pendingPayments')} value={fmtNum(k.pending_payments, lang)} icon={CreditCard} tone="warning" onClick={() => navigate('/payments?status=pending_verification')} />
             <KpiCard label={t('dashboard.newRegistrations')} value={fmtNum(k.pending_registrations, lang)} icon={UserPlus} tone={k.pending_registrations ? 'warning' : 'default'} onClick={() => navigate('/registration-requests')} />
-            <KpiCard label={t('dashboard.washesToday')} value={fmtNum(k.washes_today, lang)} icon={Droplets} tone="info" />
-            <KpiCard label={t('dashboard.completedToday')} value={fmtNum(k.washes_completed_today, lang)} icon={CheckCircle2} tone="success" />
+            <KpiCard label={t('dashboard.washesToday')} value={fmtNum(k.washes_today, lang)} icon={Droplets} tone="info" onClick={() => navigate('/operations')} />
+            <KpiCard label={t('dashboard.completedToday')} value={fmtNum(k.washes_completed_today, lang)} icon={CheckCircle2} tone="success" onClick={() => navigate('/operations')} />
             <KpiCard label={t('dashboard.pendingTasks')} value={fmtNum(k.pending_wash_tasks, lang)} icon={ListTodo} />
             <KpiCard label={t('dashboard.revenue')} value={money(k.total_revenue)} icon={Wallet} tone="success" hint={`${t('dashboard.outstanding')}: ${money(k.outstanding)}`} />
           </div>

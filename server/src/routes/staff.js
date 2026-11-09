@@ -124,6 +124,20 @@ router.get('/board', requirePermission('operations.view'), wrap(async (req, res)
   res.json({ date, tasks, staff, runs, pendingEligible: pending });
 }));
 
+// Task detail for the admin board: operation times, staff, photos (before/after), outcome
+router.get('/board/tasks/:taskId', requirePermission('operations.view'), wrap(async (req, res) => {
+  const [task] = rows(await db.execute(sql`
+    SELECT t.id, t.task_code, t.status, t.outcome, t.outcome_note, t.cancel_reason, t.scheduled_date::text AS date, t.assigned_by, c.name AS compound_name,
+      v.id AS vehicle_id, v.plate_number, v.brand, v.model, v.color, v.vehicle_type, v.parking_location, v.gps_lat, v.gps_lng, un.unit_number, o.name AS owner_name, o.mobile AS owner_mobile,
+      u.name AS staff_name, op.start_time, op.end_time, op.notes, op.issue_description, op.quota_consumed, op.start_lat, op.start_lng,
+      (SELECT json_agg(json_build_object('id', p.id, 'phase', p.phase, 'takenAt', p.taken_at) ORDER BY p.created_at) FROM wash_photos p WHERE p.operation_id = op.id) AS photos
+    FROM washing_tasks t JOIN vehicles v ON v.id = t.vehicle_id JOIN compounds c ON c.id = t.compound_id JOIN units un ON un.id = v.unit_id JOIN owners o ON o.id = v.owner_id
+    LEFT JOIN users u ON u.id = t.assigned_to LEFT JOIN washing_operations op ON op.task_id = t.id
+    WHERE t.id = ${req.params.taskId} AND t.company_id = ${req.companyId}`));
+  if (!task) throw notFound('Task');
+  res.json(task);
+}));
+
 router.post('/board/distribute', requirePermission('operations.manage'), wrap(async (req, res) => {
   const { date, compoundId } = z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), compoundId: z.string().uuid().optional() }).parse(req.body);
   const result = compoundId ? [await distributeCompound(req.companyId, compoundId, date, { trigger: 'manual', createdBy: req.user.id })] : await distributeAll(req.companyId, date, { trigger: 'manual', createdBy: req.user.id });

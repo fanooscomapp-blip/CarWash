@@ -66,9 +66,16 @@ The schema already contains **all 24 entities** from the specification (washing 
 - **Owner portal**: home, my vehicles (status, washes left, days left), vehicle detail (allowed days, next wash, history, payments, renew button), wash calendar with before/after photos, my requests.
 - **Admin**: Renewal requests view, SMS Center (logs/templates/bulk send), Settings → Payment (InstaPay), SMS, Owner portal, Notification rules; "Renewal link" + "Send renewal SMS" + WhatsApp share on subscription detail; manual wash record with photos (bridge until Phase 3).
 
+## Phase 3 — Staff & operations (delivered)
+
+- **Staff management**: work days, compounds (a washer can serve several), PIN for the staff app, leaves (tasks on those days move to colleagues automatically), one-tap **"absent today"** (emergency leave → immediate redistribution).
+- **Automatic distribution**: every evening (configurable hour, default 20:00) tomorrow's due cars (paid subscription, allowed day, quota and weekly frequency left, no duplicate) are split evenly among the available staff of each compound, preferring the washer who did the car last time; runs are idempotent and logged (`assignment_runs`). Vehicles without staff go to a pool any colleague can claim.
+- **Washing Operations board** (admin): today / tomorrow / any date, per-staff columns + unassigned pool, drag or select to reassign, distribute now, add task, cancel, task detail with before/after photos, times, duration, outcome.
+- **Staff app** (`/s`, mobile): login with employee code + PIN; today & tomorrow only; icon-based cards (Egyptian-style plate, coloured car silhouette, brand badge, unit, location + map link); tap → before photos (timer starts) → done → after photos → completed with duration; "can't wash" outcomes configurable in Settings (not found, locked, damage with photo, postpone → tomorrow); background photo upload with automatic retry and offline banner; AR/EN.
+- Completed washes consume the subscription quota, appear in the owner's wash calendar with photos, and can trigger the owner SMS (Settings → Notification rules).
+
 | Phase | Scope |
 |---|---|
-| 3 | Staff portal, task assignment & task pool, washing workflow with mandatory before/after photos, validation engine (quota, allowed days, duplicates), admin operations monitoring |
 | 4 | Scheduled SMS reminders, QR printing/scanning, reports & Excel/PDF export, staff performance |
 | 5 | Security review, responsive & workflow testing, performance tuning |
 
@@ -78,7 +85,7 @@ The schema already contains **all 24 entities** from the specification (washing 
 |---|---|---|
 | Super Admin | admin@carwash.local | Admin@12345 |
 | Operations Manager | ops@carwash.local | Ops@12345 |
-| Car Wash Staff (Phase 3 portal) | staff1@carwash.local | Staff@12345 |
+| Car Wash Staff (staff app `/s`) | employee code `EMP-001` / `EMP-002` / `EMP-003` | PIN `1234` |
 
 ## 6. Project layout
 
