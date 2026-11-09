@@ -5,7 +5,7 @@ import { useQuery, useDebounced, useLookups } from '../lib/hooks.js';
 import { useI18n } from '../lib/i18n.jsx';
 import { useAuth } from '../lib/auth.jsx';
 import { fmtDate, fmtMoney } from '../lib/format.js';
-import { PageHeader, DataTable, SearchInput, Select, StatusBadge } from '../components/ui.jsx';
+import { PageHeader, DataTable, SearchInput, Select, StatusBadge, Input } from '../components/ui.jsx';
 import RenewModal from '../components/RenewModal.jsx';
 
 export default function Subscriptions() {
@@ -13,7 +13,7 @@ export default function Subscriptions() {
   const plans = useQuery('/admin/plans');
   const [sp, setSp] = useSearchParams();
   const [search, setSearch] = useState(''); const [page, setPage] = useState(1); const [renew, setRenew] = useState(null);
-  const filters = { status: sp.get('status') || '', compoundId: sp.get('compoundId') || '', planId: sp.get('planId') || '' };
+  const filters = { status: sp.get('status') || '', compoundId: sp.get('compoundId') || '', planId: sp.get('planId') || '', month: sp.get('month') || '', kind: sp.get('kind') || '' };
   const setFilter = (k, v) => { const n = new URLSearchParams(sp); v ? n.set(k, v) : n.delete(k); setSp(n); setPage(1); };
   const q = useDebounced(search);
   const { data, loading, error, reload } = useQuery('/admin/subscriptions', { search: q, ...filters, page, pageSize: 20 });
@@ -36,6 +36,8 @@ export default function Subscriptions() {
         <Select value={filters.status} onChange={(e) => setFilter('status', e.target.value)} className="w-48"><option value="">{t('common.status')}: {t('common.all')}</option><option value="active,expiring_soon">{t('status.active')} + {t('status.expiring_soon')}</option>{(lookups.data?.subscriptionStatuses || []).map((s) => <option key={s} value={s}>{t(`status.${s}`)}</option>)}</Select>
         <Select value={filters.compoundId} onChange={(e) => setFilter('compoundId', e.target.value)} className="w-48"><option value="">{t('dashboard.allCompounds')}</option>{lookups.data?.compounds.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>
         <Select value={filters.planId} onChange={(e) => setFilter('planId', e.target.value)} className="w-48"><option value="">{t('common.plan')}: {t('common.all')}</option>{(plans.data || []).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</Select>
+        <Select value={filters.kind} onChange={(e) => setFilter('kind', e.target.value)} className="w-40"><option value="">{t('common.all')}</option><option value="new">{t('dashboard.newSubs')}</option><option value="renewal">{t('dashboard.renewals')}</option></Select>
+        <Input type="month" value={filters.month} onChange={(e) => setFilter('month', e.target.value)} className="w-44" />
       </div>
       <DataTable columns={columns} rows={data?.data} loading={loading} error={error} onRetry={reload} pagination={data?.pagination} onPage={setPage} onRowClick={(r) => navigate(`/subscriptions/${r.id}`)} />
       {renew && <RenewModal open onClose={() => setRenew(null)} subscription={renew} onRenewed={reload} />}

@@ -86,7 +86,7 @@ export default function JoinPage() {
         {plan && <Card className="p-4"><PaymentBox amount={priceOf(plan)} payment={cfg.payment} currency={cur} /></Card>}
 
         <Card className="p-4 space-y-3">
-          <input ref={fileRef} type="file" accept="image/*,application/pdf" capture="environment" className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+          <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
           {!file ? <button type="button" onClick={() => fileRef.current.click()} className="w-full rounded-xl border-2 border-dashed border-brand-300 bg-brand-50/40 py-8 flex flex-col items-center gap-2 text-brand-700"><Upload size={28} /><span className="font-semibold">{t('uploadReceipt')}</span><span className="text-xs text-slate-500">JPG · PNG · PDF</span></button>
             : <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-3">{file.type.startsWith('image/') ? <img src={URL.createObjectURL(file)} alt="" className="h-16 w-16 rounded-lg object-cover" /> : <FileImage className="h-16 w-16 text-slate-400" />}<div className="flex-1 min-w-0 text-sm"><p className="truncate font-medium">{file.name}</p></div><button type="button" className="text-xs text-brand-600 font-semibold" onClick={() => fileRef.current.click()}>{t('changeFile')}</button></div>}
           <input className={inp} placeholder={t('note')} value={note} onChange={(e) => setNote(e.target.value)} />

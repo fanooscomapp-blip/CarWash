@@ -50,7 +50,7 @@ const joined = (q) => q.from(subscriptions)
   .innerJoin(owners, eq(owners.id, subscriptions.ownerId));
 
 function buildWhere(req) {
-  const { search, compoundId, status, planId, ownerId, unitId, vehicleId, window, dateFrom, dateTo } = req.query;
+  const { search, compoundId, status, planId, ownerId, unitId, vehicleId, window, dateFrom, dateTo, month, kind } = req.query;
   const statuses = status ? String(status).split(',').filter((s) => SUB_STATUS.includes(s)) : [];
   return and(
     eq(subscriptions.companyId, req.companyId),
@@ -63,6 +63,8 @@ function buildWhere(req) {
     dateFrom ? sql`${subscriptions.endDate} >= ${dateFrom}` : undefined,
     dateTo ? sql`${subscriptions.endDate} <= ${dateTo}` : undefined,
     window ? sql`${subscriptions.endDate} BETWEEN CURRENT_DATE AND CURRENT_DATE + ${Number(window)}::int` : undefined,
+    month && /^\d{4}-\d{2}$/.test(month) ? sql`to_char(${subscriptions.createdAt}, 'YYYY-MM') = ${month}` : undefined,
+    kind === 'new' ? sql`${subscriptions.renewedFromId} IS NULL` : kind === 'renewal' ? sql`${subscriptions.renewedFromId} IS NOT NULL` : undefined,
     search ? or(ilike(subscriptions.subscriptionCode, search), ilike(owners.name, search), ilike(owners.mobile, search), ilike(units.unitNumber, search),
       sql`EXISTS (SELECT 1 FROM subscription_vehicles sv JOIN vehicles v ON v.id = sv.vehicle_id WHERE sv.subscription_id = ${subscriptions.id} AND v.plate_number ILIKE ${'%' + search + '%'})`) : undefined,
   );

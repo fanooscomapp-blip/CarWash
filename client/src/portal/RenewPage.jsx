@@ -82,7 +82,7 @@ export default function RenewPage() {
 
             {/* Receipt upload */}
             <Card className="p-4 space-y-3">
-              <input ref={fileRef} type="file" accept="image/*,application/pdf" capture="environment" className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+              <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
               {!file ? (
                 <button type="button" onClick={() => fileRef.current.click()} className="w-full rounded-xl border-2 border-dashed border-brand-300 bg-brand-50/40 py-8 flex flex-col items-center gap-2 text-brand-700"><Upload size={28} /><span className="font-semibold">{req?.payment?.status === 'awaiting_new_receipt' ? t('reupload') : t('uploadReceipt')}</span><span className="text-xs text-slate-500">JPG · PNG · PDF</span></button>
               ) : (

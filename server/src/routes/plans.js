@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { and, eq, sql, getTableColumns } from 'drizzle-orm';
 import { db, schema } from '../db/index.js';
-import { wrap, notFound } from '../lib/errors.js';
+import { wrap, notFound, validationFailed } from '../lib/errors.js';
 import { requirePermission } from '../middleware/auth.js';
 import { audit } from '../lib/audit.js';
 import { compact } from '../lib/util.js';
@@ -28,9 +28,8 @@ const planSchema = z.object({
   description: z.string().max(2000).optional().nullable(),
   isActive: z.boolean().optional(),
   prices: z.array(priceSchema).optional(),
-}).superRefine((v, ctx) => {
-  if (v.planType === 'custom' && !v.durationDays) ctx.addIssue({ code: 'custom', path: ['durationDays'], message: 'Duration is required for custom plans' });
 });
+const customNeedsDuration = (v) => { if (v.planType === 'custom' && !v.durationDays) throw validationFailed('Duration is required for custom plans'); };
 
 router.get('/', requirePermission('plans.view', 'subscriptions.view'), wrap(async (req, res) => {
   const { active } = req.query;
@@ -57,7 +56,7 @@ async function savePrices(t, planId, prices) {
 }
 
 router.post('/', requirePermission('plans.manage'), wrap(async (req, res) => {
-  const { prices, ...body } = planSchema.parse(req.body);
+  const { prices, ...body } = planSchema.parse(req.body); customNeedsDuration(body);
   const durationDays = body.planType === 'custom' ? body.durationDays : (body.durationDays || PLAN_TYPES[body.planType]);
   const row = await db.transaction(async (t) => {
     const [p] = await t.insert(subscriptionPlans).values({ ...body, durationDays, price: String(body.price), maxVehicles: body.scope === 'per_vehicle' ? 1 : (body.maxVehicles || 1), companyId: req.companyId }).returning();

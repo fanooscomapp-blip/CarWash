@@ -55,9 +55,12 @@ router.get('/', requirePermission('dashboard.view'), wrap(async (req, res) => {
       round(avg(EXTRACT(EPOCH FROM (o.end_time - o.start_time))/60) FILTER (WHERE o.end_time IS NOT NULL))::int AS avg_minutes
     FROM users u LEFT JOIN washing_tasks t ON t.assigned_to=u.id LEFT JOIN washing_operations o ON o.task_id=t.id
     WHERE u.company_id=${cid} AND u.user_type='staff' GROUP BY u.id ORDER BY completed DESC LIMIT 10`));
+  const latest = rows(await db.execute(sql`SELECT s.id, s.subscription_code, s.status, s.final_amount, s.created_at, s.renewed_from_id, s.plan_snapshot->>'name' AS plan_name, o.name AS owner_name, c.name AS compound_name,
+      (SELECT string_agg(v.plate_number, ', ') FROM subscription_vehicles sv JOIN vehicles v ON v.id = sv.vehicle_id WHERE sv.subscription_id = s.id) AS plates
+    FROM subscriptions s JOIN owners o ON o.id = s.owner_id JOIN compounds c ON c.id = s.compound_id WHERE s.company_id=${cid} ${compoundId ? sql`AND s.compound_id = ${compoundId}` : sql``} ORDER BY s.created_at DESC LIMIT 8`));
   const recent = rows(await db.execute(sql`SELECT a.id, a.action, a.entity_type, a.entity_id, a.created_at, u.name AS user_name FROM audit_logs a LEFT JOIN users u ON u.id=a.user_id WHERE a.company_id=${cid} ORDER BY a.created_at DESC LIMIT 10`));
 
-  res.json({ kpis, statusBreakdown, monthly, revenueByCompound, revenueByPlan, conversion: { ...conversion, rate: conversion.ended ? Math.round((conversion.renewed / conversion.ended) * 100) : null }, operations, staffPerformance, recent });
+  res.json({ kpis, statusBreakdown, monthly, revenueByCompound, revenueByPlan, latest, conversion: { ...conversion, rate: conversion.ended ? Math.round((conversion.renewed / conversion.ended) * 100) : null }, operations, staffPerformance, recent });
 }));
 
 export default router;
