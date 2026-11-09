@@ -52,7 +52,7 @@ export default function Dashboard() {
             <KpiCard label={t('dashboard.units')} value={fmtNum(k.units, lang)} icon={Home} onClick={() => navigate('/units')} />
             <KpiCard label={t('dashboard.vehicles')} value={fmtNum(k.vehicles, lang)} icon={Car} onClick={() => navigate('/vehicles')} />
             <KpiCard label={t('dashboard.active')} value={fmtNum(k.active_subscriptions, lang)} icon={FileText} tone="success" onClick={() => navigate('/subscriptions?status=active,expiring_soon')} />
-            <KpiCard label={t('dashboard.expiring')} value={fmtNum(k.expiring_subscriptions, lang)} icon={Clock} tone="warning" onClick={() => navigate('/renewals')} />
+            <KpiCard label={t('dashboard.expiring')} value={fmtNum(k.expiring_subscriptions, lang)} icon={Clock} tone="warning" onClick={() => navigate('/renewals?filter=expiring')} />
             <KpiCard label={t('dashboard.expired')} value={fmtNum(k.expired_subscriptions, lang)} icon={AlertTriangle} tone="danger" onClick={() => navigate('/renewals?filter=expired')} />
             <KpiCard label={t('dashboard.pendingRenewals')} value={fmtNum(k.pending_renewals, lang)} icon={RefreshCw} tone="warning" onClick={() => navigate('/renewals?filter=pending')} />
             <KpiCard label={t('dashboard.pendingPayments')} value={fmtNum(k.pending_payments, lang)} icon={CreditCard} tone="warning" onClick={() => navigate('/payments?status=pending_verification')} />

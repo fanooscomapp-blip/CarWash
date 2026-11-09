@@ -100,8 +100,8 @@ export default function Layout() {
   const menuRef = useRef();
   useEffect(() => { const onDoc = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenu(false); }; document.addEventListener('mousedown', onDoc); return () => document.removeEventListener('mousedown', onDoc); }, []);
   return (
-    <div className="flex h-full">
-      <div className="hidden lg:block shrink-0 sticky top-0 h-screen"><Sidebar /></div>
+    <div className="flex min-h-screen">
+      <div className="hidden lg:block shrink-0 sticky top-0 h-screen self-start"><Sidebar /></div>
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0 bg-navy-950/60" onClick={() => setMobileOpen(false)} />

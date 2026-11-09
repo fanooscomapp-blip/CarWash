@@ -91,6 +91,7 @@ router.get('/renewals', requirePermission('subscriptions.view'), wrap(async (req
     '7': and(inArray(subscriptions.status, ['active', 'expiring_soon']), sql`${subscriptions.endDate} <= CURRENT_DATE + 7`, notRenewed),
     '15': and(inArray(subscriptions.status, ['active', 'expiring_soon']), sql`${subscriptions.endDate} <= CURRENT_DATE + 15`, notRenewed),
     '30': and(inArray(subscriptions.status, ['active', 'expiring_soon']), sql`${subscriptions.endDate} <= CURRENT_DATE + 30`, notRenewed),
+    expiring: and(eq(subscriptions.status, 'expiring_soon'), notRenewed),
     expired: and(eq(subscriptions.status, 'expired'), notRenewed),
     pending: sql`EXISTS (SELECT 1 FROM subscriptions s2 WHERE s2.renewed_from_id = ${subscriptions.id} AND s2.status = 'pending_payment')`,
     renewed: sql`EXISTS (SELECT 1 FROM subscriptions s2 WHERE s2.renewed_from_id = ${subscriptions.id} AND s2.status IN ('active','expiring_soon','expired'))`,
@@ -107,6 +108,7 @@ router.get('/renewals', requirePermission('subscriptions.view'), wrap(async (req
       count(*) FILTER (WHERE status IN ('active','expiring_soon') AND end_date <= CURRENT_DATE + 7 AND NOT EXISTS (SELECT 1 FROM subscriptions s2 WHERE s2.renewed_from_id = s.id AND s2.status <> 'cancelled'))::int AS d7,
       count(*) FILTER (WHERE status IN ('active','expiring_soon') AND end_date <= CURRENT_DATE + 15 AND NOT EXISTS (SELECT 1 FROM subscriptions s2 WHERE s2.renewed_from_id = s.id AND s2.status <> 'cancelled'))::int AS d15,
       count(*) FILTER (WHERE status IN ('active','expiring_soon') AND end_date <= CURRENT_DATE + 30 AND NOT EXISTS (SELECT 1 FROM subscriptions s2 WHERE s2.renewed_from_id = s.id AND s2.status <> 'cancelled'))::int AS d30,
+      count(*) FILTER (WHERE status = 'expiring_soon' AND NOT EXISTS (SELECT 1 FROM subscriptions s2 WHERE s2.renewed_from_id = s.id AND s2.status <> 'cancelled'))::int AS expiring,
       count(*) FILTER (WHERE status = 'expired' AND NOT EXISTS (SELECT 1 FROM subscriptions s2 WHERE s2.renewed_from_id = s.id AND s2.status <> 'cancelled'))::int AS expired,
       count(*) FILTER (WHERE EXISTS (SELECT 1 FROM subscriptions s2 WHERE s2.renewed_from_id = s.id AND s2.status = 'pending_payment'))::int AS pending,
       count(*) FILTER (WHERE EXISTS (SELECT 1 FROM subscriptions s2 WHERE s2.renewed_from_id = s.id AND s2.status IN ('active','expiring_soon','expired')))::int AS renewed

@@ -8,8 +8,8 @@ import { fmtDate, fmtMoney } from '../lib/format.js';
 import { PageHeader, DataTable, SearchInput, Select, StatusBadge, Tabs } from '../components/ui.jsx';
 import RenewModal from '../components/RenewModal.jsx';
 
-const FILTERS = ['7', '15', '30', 'expired', 'pending', 'renewed'];
-const COUNTER_KEY = { 7: 'd7', 15: 'd15', 30: 'd30', expired: 'expired', pending: 'pending', renewed: 'renewed' };
+const FILTERS = ['expiring', '7', '15', '30', 'expired', 'pending', 'renewed'];
+const COUNTER_KEY = { expiring: 'expiring', 7: 'd7', 15: 'd15', 30: 'd30', expired: 'expired', pending: 'pending', renewed: 'renewed' };
 
 export default function Renewals() {
   const { t, lang } = useI18n(); const { can, company } = useAuth(); const navigate = useNavigate(); const lookups = useLookups();
