@@ -25,14 +25,19 @@ const SMSMISR_CODES = {
 };
 async function sendViaSmsMisr(cfg, { to, body, lang }) {
   const base = (cfg.apiUrl || 'https://smsmisr.com/api/SMS/').replace(/\/?$/, '/');
-  const language = lang === 'ar' ? '2' : /[^\x00-\x7F]/.test(body) ? '3' : '1'; // 1 English, 2 Arabic, 3 Unicode
-  const params = new URLSearchParams({ environment: cfg.environment === 'test' ? '2' : '1', username: cfg.username, password: cfg.password, sender: cfg.senderId, mobile: to.replace(/^\+/, ''), language, message: body });
-  const res = await fetch(`${base}?${params.toString()}`, { method: 'POST', signal: AbortSignal.timeout(15000) });
+  // 1 English, 2 Arabic, 3 Unicode – decided from the actual text, not the UI language
+  const hasArabic = /[\u0600-\u06FF]/.test(body);
+  const nonAscii = /[^\x00-\x7F]/.test(body);
+  const language = hasArabic ? '2' : nonAscii ? '3' : '1';
+  // Plain-English messages must be strictly GSM-safe: normalise typographic punctuation that gateways reject
+  const msg = language === '1' ? body.replace(/[\u2013\u2014]/g, '-').replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"').replace(/\u2026/g, '...') : body;
+  const params = new URLSearchParams({ environment: cfg.environment === 'test' ? '2' : '1', username: cfg.username, password: cfg.password, sender: cfg.senderId, mobile: to.replace(/^\+/, ''), language, message: msg });
+  const res = await fetch(`${base}?${params.toString()}`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString(), signal: AbortSignal.timeout(15000) });
   const text = await res.text();
   let json; try { json = JSON.parse(text); } catch { json = { raw: text }; }
   const code = String(json.code ?? json.Code ?? '');
   const ok = code === '1901';
-  return { ok, providerId: json.SMSID || json.smsid || null, response: { httpStatus: res.status, ...json, codeMeaning: SMSMISR_CODES[code] || undefined } };
+  return { ok, providerId: json.SMSID || json.smsid || null, response: { httpStatus: res.status, ...json, codeMeaning: SMSMISR_CODES[code] || undefined, language, sentText: msg.slice(0, 80) } };
 }
 
 // Generic JSON webhook adapter: POST { to, message, sender } with Bearer token – lets any other gateway be wired without code changes.

@@ -46,7 +46,9 @@ const sectionSchemas = {
 // Send a real test message through the configured provider (nothing is simulated)
 router.post('/sms/test', requirePermission('settings.manage'), wrap(async (req, res) => {
   const { mobile, message } = z.object({ mobile: z.string().min(6), message: z.string().max(300).optional() }).parse(req.body);
-  const log = await sendSms(req.companyId, { to: normalizeMobile(mobile), body: message || 'Car Wash Management – test message / رسالة تجريبية', lang: 'en' });
+  const cfg = await getSetting(req.companyId, 'sms');
+  const body = message || (cfg.defaultLang === 'ar' ? 'رسالة تجريبية من نظام غسيل السيارات' : 'Test message from Car Wash Management');
+  const log = await sendSms(req.companyId, { to: normalizeMobile(mobile), body, lang: cfg.defaultLang });
   await audit(req, { action: 'settings.sms_test', entityType: 'settings', after: { to: log.toMobile, status: log.status } });
   res.json(log);
 }));
