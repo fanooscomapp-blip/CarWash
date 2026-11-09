@@ -15,6 +15,17 @@ export default function SubscriptionDetail() {
   const [renew, setRenew] = useState(false); const [dialog, setDialog] = useState(null); const [busy, setBusy] = useState(false);
   const [link, setLink] = useState(null); const [linkBusy, setLinkBusy] = useState(false);
   const getLink = async () => { setLinkBusy(true); try { const { data } = await api.get(`/admin/sms/renewal-link/${id}`); setLink(data.link); try { await navigator.clipboard.writeText(data.link); toast.success(t('common.copied')); } catch { /* clipboard blocked */ } } catch (e) { toast.error(e.message); } finally { setLinkBusy(false); } };
+  // Opens WhatsApp with the Arabic renewal text + link prefilled (owner's number); nothing is sent until the admin taps send in WhatsApp
+  const sendWhatsApp = async () => {
+    setLinkBusy(true);
+    try {
+      const { data } = await api.get(`/admin/sms/renewal-link/${id}`); setLink(data.link);
+      const msg = lang === 'ar'
+        ? `مرحباً ${s.ownerName}، اشتراك غسيل السيارة ${s.plates} (وحدة ${s.unitNumber} - ${s.compoundName}) ينتهي بتاريخ ${fmtDate(s.endDate, 'en')}. للتجديد ورفع إيصال التحويل: ${data.link}`
+        : `Hello ${s.ownerName}, your car wash subscription for ${s.plates} (unit ${s.unitNumber} - ${s.compoundName}) expires on ${fmtDate(s.endDate, 'en')}. Renew and upload your transfer receipt here: ${data.link}`;
+      window.open(`https://wa.me/${s.ownerMobile.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
+    } catch (e) { toast.error(e.message); } finally { setLinkBusy(false); }
+  };
   const sendReminder = async () => { setBusy(true); try { const { data } = await api.post(`/admin/sms/renewal-reminder/${id}`); setLink(data.link); toast[data.log?.status === 'sent' ? 'success' : 'error'](t(`sms.status_${data.log?.status || 'failed'}`)); } catch (e) { toast.error(e.message); } finally { setBusy(false); } };
   const cur = company?.currency || 'EGP'; const days = t('common.weekdays');
   if (error) return <ErrorBox error={error} onRetry={reload} />;
@@ -29,8 +40,9 @@ export default function SubscriptionDetail() {
         actions={<>
           {can('payments.approve') && pendingPayment && <><button className="btn-success" onClick={() => setDialog('approve')}><CheckCircle2 size={16} />{t('subs.approvePayment')}</button><button className="btn-secondary" onClick={() => setDialog('reject')}><Ban size={16} />{t('subs.rejectPayment')}</button></>}
           {can('subscriptions.renew', 'subscriptions.manage') && canRenew && <button className="btn-accent" onClick={() => setRenew(true)}><RefreshCw size={16} />{t('vehicles.renew')}</button>}
-          {can('subscriptions.view') && canRenew && <button className="btn-secondary" disabled={linkBusy} onClick={getLink}><Link2 size={16} />{t('sms.copyLink')}</button>}
           {can('sms.send', 'subscriptions.renew') && canRenew && <button className="btn-secondary" disabled={busy} onClick={sendReminder}><MessageSquare size={16} />{t('sms.sendReminder')}</button>}
+          {can('subscriptions.view') && canRenew && <button className="btn-secondary !bg-emerald-600 !text-white !border-emerald-600 hover:!bg-emerald-700" disabled={linkBusy} onClick={sendWhatsApp}><MessageSquare size={16} />{t('sms.sendWhatsApp')}</button>}
+          {can('subscriptions.view') && canRenew && <button className="btn-secondary" disabled={linkBusy} onClick={getLink}><Link2 size={16} />{t('sms.copyLink')}</button>}
           {can('subscriptions.manage') && ['active', 'expiring_soon'].includes(s.status) && <button className="btn-secondary" onClick={() => setDialog('suspend')}><Pause size={16} />{t('subs.suspend')}</button>}
           {can('subscriptions.manage') && s.status === 'suspended' && <button className="btn-success" onClick={() => act(() => api.post(`/admin/subscriptions/${id}/resume`, {}))}><Play size={16} />{t('subs.resume')}</button>}
           {can('subscriptions.manage') && !['cancelled', 'expired'].includes(s.status) && <button className="btn-danger" onClick={() => setDialog('cancel')}><XCircle size={16} />{t('subs.cancel')}</button>}
