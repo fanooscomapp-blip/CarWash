@@ -6,7 +6,7 @@ import { useI18n } from '../lib/i18n.jsx';
 import { useAuth } from '../lib/auth.jsx';
 import { api } from '../lib/api.js';
 import { fmtDate, fmtDateTime, fmtMoney } from '../lib/format.js';
-import { PageHeader, Loading, ErrorBox, DescriptionList, StatusBadge, ConfirmDialog, useToast, KpiCard, Modal, Spinner } from '../components/ui.jsx';
+import { PageHeader, Loading, ErrorBox, DescriptionList, StatusBadge, ConfirmDialog, useToast, KpiCard, Modal, Spinner, DeleteButton } from '../components/ui.jsx';
 import RenewModal from '../components/RenewModal.jsx';
 import WashDaysPicker from '../components/WashDaysPicker.jsx';
 
@@ -47,6 +47,7 @@ export default function SubscriptionDetail() {
           {can('subscriptions.view') && canRenew && <button className="btn-secondary" disabled={linkBusy} onClick={getLink}><Link2 size={16} />{t('sms.copyLink')}</button>}
           {can('subscriptions.manage') && ['active', 'expiring_soon'].includes(s.status) && <button className="btn-secondary" onClick={() => setDialog('suspend')}><Pause size={16} />{t('subs.suspend')}</button>}
           {can('subscriptions.manage') && s.status === 'suspended' && <button className="btn-success" onClick={() => act(() => api.post(`/admin/subscriptions/${id}/resume`, {}))}><Play size={16} />{t('subs.resume')}</button>}
+          {can('subscriptions.manage') && ['cancelled', 'pending_payment'].includes(s.status) && <DeleteButton url={`/admin/subscriptions/${s.id}`} name={s.subscriptionCode} iconOnly={false} className="!border !border-red-200" onDone={() => navigate('/subscriptions')} />}
           {can('subscriptions.manage') && !['cancelled', 'expired'].includes(s.status) && <button className="btn-danger" onClick={() => setDialog('cancel')}><XCircle size={16} />{t('subs.cancel')}</button>}
         </>} />
       {link && <div className="mb-4 flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm"><Link2 size={15} className="text-brand-600 shrink-0" /><a href={link} target="_blank" rel="noreferrer" className="flex-1 truncate text-brand-700 underline" dir="ltr">{link}</a><button className="btn-ghost btn-sm" onClick={() => { navigator.clipboard?.writeText(link); toast.success(t('common.copied')); }}><Copy size={14} /></button><a className="btn-ghost btn-sm" href={`https://wa.me/${s.ownerMobile.replace(/\D/g, '')}?text=${encodeURIComponent(link)}`} target="_blank" rel="noreferrer">WhatsApp</a></div>}

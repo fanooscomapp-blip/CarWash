@@ -5,7 +5,7 @@ import { useI18n } from '../lib/i18n.jsx';
 import { useAuth } from '../lib/auth.jsx';
 import { api } from '../lib/api.js';
 import { fmtMoney } from '../lib/format.js';
-import { PageHeader, Loading, ErrorBox, Modal, Field, Input, Select, Textarea, Spinner, useToast, DaysPicker, Toggle, StatusBadge, Empty } from '../components/ui.jsx';
+import { PageHeader, Loading, ErrorBox, Modal, Field, Input, Select, Textarea, Spinner, useToast, DaysPicker, Toggle, StatusBadge, Empty, DeleteButton } from '../components/ui.jsx';
 
 const DEFAULT_DURATION = { weekly: 7, monthly: 30, quarterly: 90, semi_annual: 180, annual: 365, custom: 30 };
 
@@ -82,7 +82,7 @@ export default function Plans() {
                 <div className="col-span-2"><dt className="text-slate-400">{t('plans.allowedDays')}</dt><dd className="flex flex-wrap gap-1 mt-1">{[6, 0, 1, 2, 3, 4, 5].map((d) => <span key={d} className={`rounded px-1.5 py-0.5 text-[10px] ${p.allowedDays.includes(d) ? 'bg-navy-900 text-white' : 'bg-slate-100 text-slate-400'}`}>{days[d]}</span>)}</dd></div>
               </dl>
               {p.prices?.length > 0 && <div className="mt-3 text-xs"><p className="text-slate-400 mb-1">{t('plans.overrides')}</p><ul className="space-y-0.5">{p.prices.map((o) => <li key={o.id} className="flex justify-between"><span className="text-slate-600">{o.compound?.name || t('plans.anyCompound')} · {o.vehicleType ? t(`vehicles.types.${o.vehicleType}`) : t('plans.anyType')}</span><span className="font-medium">{fmtMoney(o.price, cur, lang)}</span></li>)}</ul></div>}
-              <div className="mt-auto pt-4 flex items-center justify-between text-xs text-slate-500"><span>{t('plans.usage', { active: p.usage.active, total: p.usage.total })}</span>{can('plans.manage') && <button className="btn-ghost btn-sm" onClick={() => setModal(p)}><Pencil size={14} />{t('common.edit')}</button>}</div>
+              <div className="mt-auto pt-4 flex items-center justify-between text-xs text-slate-500"><span>{t('plans.usage', { active: p.usage.active, total: p.usage.total })}</span>{can('plans.manage') && <span className="inline-flex items-center gap-1"><button className="btn-ghost btn-sm" onClick={() => setModal(p)}><Pencil size={14} />{t('common.edit')}</button><DeleteButton url={`/admin/plans/${p.id}`} name={p.name} onDone={reload} /></span>}</div>
             </div>
           ))}
         </div>

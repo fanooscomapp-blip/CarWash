@@ -6,7 +6,7 @@ import { useI18n } from '../lib/i18n.jsx';
 import { useAuth } from '../lib/auth.jsx';
 import { api } from '../lib/api.js';
 import { fmtMoney } from '../lib/format.js';
-import { PageHeader, DataTable, StatusBadge, SearchInput, Select, Modal, Field, Input, Textarea, Spinner, useToast } from '../components/ui.jsx';
+import { PageHeader, DataTable, StatusBadge, SearchInput, Select, Modal, Field, Input, Textarea, Spinner, useToast, DeleteButton } from '../components/ui.jsx';
 
 export function CompoundForm({ open, onClose, initial, onSaved }) {
   const { t } = useI18n(); const toast = useToast();
@@ -51,7 +51,7 @@ export default function Compounds() {
     { key: 'registeredVehicles', header: t('nav.vehicles') },
     { key: 'activeSubscriptions', header: t('compounds.activeSubs') },
     { key: 'status', header: t('common.status'), render: (r) => <StatusBadge status={r.status} label={t(`common.${r.status}`)} /> },
-    { key: 'actions', header: '', className: 'text-end', render: (r) => can('compounds.manage') && <button className="btn-ghost btn-sm" onClick={(e) => { e.stopPropagation(); setModal(r); }}>{t('common.edit')}</button> },
+    { key: 'actions', header: '', className: 'text-end', render: (r) => can('compounds.manage') && <span className="inline-flex items-center gap-1"><button className="btn-ghost btn-sm" onClick={(e) => { e.stopPropagation(); setModal(r); }}>{t('common.edit')}</button><DeleteButton url={`/admin/compounds/${r.id}`} name={r.name} onDone={reload} /></span> },
   ];
   return (
     <div className="fade-in">

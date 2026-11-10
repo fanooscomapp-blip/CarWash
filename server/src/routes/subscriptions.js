@@ -2,12 +2,13 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { and, eq, sql, or, getTableColumns, desc, inArray } from 'drizzle-orm';
 import { db, schema } from '../db/index.js';
-import { wrap, notFound } from '../lib/errors.js';
+import { wrap, notFound, badRequest } from '../lib/errors.js';
 import { requirePermission } from '../middleware/auth.js';
 import { audit } from '../lib/audit.js';
 import { parsePagination, paged, ilike, today } from '../lib/util.js';
 import { suggestWashDays, dayLoads, busyDays } from '../services/washDaysService.js';
 import { createSubscription, renewSubscription, refreshStatuses, changeSubscriptionStatus, SUB_STATUS } from '../services/subscriptionService.js';
+import { assertDeletable, deleteRow } from '../lib/safeDelete.js';
 
 const router = Router();
 const { subscriptions, subscriptionPlans, units, owners, compounds, vehicles, subscriptionVehicles, payments, subscriptionRenewals } = schema;
@@ -202,6 +203,26 @@ router.put('/:id/notes', requirePermission('subscriptions.manage'), wrap(async (
   const [row] = await db.update(subscriptions).set({ notes, updatedAt: new Date() }).where(eq(subscriptions.id, before.id)).returning();
   await audit(req, { action: 'subscription.update_notes', entityType: 'subscription', entityId: row.id, before: { notes: before.notes }, after: { notes } });
   res.json(row);
+}));
+
+router.delete('/:id', requirePermission('subscriptions.manage'), wrap(async (req, res) => {
+  const s = await db.query.subscriptions.findFirst({ where: and(eq(schema.subscriptions.id, req.params.id), eq(schema.subscriptions.companyId, req.companyId)) });
+  if (!s) throw notFound('Subscription');
+  if (!['cancelled', 'pending_payment'].includes(s.status)) throw badRequest('Only cancelled or pending-payment subscriptions can be deleted. Cancel it first.');
+  await db.execute(sql`DELETE FROM payment_receipts WHERE payment_id IN (SELECT id FROM payments WHERE subscription_id = ${s.id})`);
+  await db.execute(sql`DELETE FROM payments WHERE subscription_id = ${s.id} AND status <> 'approved'`);
+  await db.execute(sql`DELETE FROM washing_tasks WHERE subscription_id = ${s.id} AND status NOT IN ('completed','in_progress')`);
+  await db.execute(sql`DELETE FROM subscription_reminders WHERE subscription_id = ${s.id}`);
+  await db.execute(sql`DELETE FROM subscription_renewals WHERE new_subscription_id = ${s.id} OR previous_subscription_id = ${s.id}`);
+  await db.execute(sql`DELETE FROM subscription_vehicles WHERE subscription_id = ${s.id}`);
+  await assertDeletable('subscription', req.params.id, [
+    { table: 'payments', column: 'subscription_id', label: 'approved payment(s)', where: "status = 'approved'" },
+    { table: 'washing_tasks', column: 'subscription_id', label: 'washing task(s)', where: "status IN ('completed','in_progress')" },
+    { table: 'subscriptions', column: 'renewed_from_id', label: 'renewal(s) that follow it' }
+  ]);
+  const row = await deleteRow('subscriptions', req.params.id, req.companyId);
+  await audit(req, { action: 'subscription.delete', entityType: 'subscription', entityId: row.id });
+  res.json({ ok: true });
 }));
 
 export default router;

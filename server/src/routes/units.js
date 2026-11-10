@@ -7,6 +7,7 @@ import { requirePermission } from '../middleware/auth.js';
 import { audit } from '../lib/audit.js';
 import { parsePagination, paged, compact, ilike } from '../lib/util.js';
 import { normalizeMobile } from '../lib/mobile.js';
+import { assertDeletable, deleteRow } from '../lib/safeDelete.js';
 
 const router = Router();
 const { units, owners, compounds, vehicles, subscriptions, payments, subscriptionPlans } = schema;
@@ -99,6 +100,16 @@ router.put('/:id', requirePermission('units.manage'), wrap(async (req, res) => {
     return u;
   });
   res.json(row);
+}));
+
+router.delete('/:id', requirePermission('units.manage'), wrap(async (req, res) => {
+  await assertDeletable('unit', req.params.id, [
+    { table: 'vehicles', column: 'unit_id', label: 'vehicle(s)' },
+    { table: 'subscriptions', column: 'unit_id', label: 'subscription(s)' }
+  ]);
+  const row = await deleteRow('units', req.params.id, req.companyId);
+  await audit(req, { action: 'unit.delete', entityType: 'unit', entityId: row.id });
+  res.json({ ok: true });
 }));
 
 export default router;

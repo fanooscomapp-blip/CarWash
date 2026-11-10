@@ -17,6 +17,7 @@ const { vehicles, units, owners, compounds, subscriptions, subscriptionPlans, qr
 const photoUpload = makeUploader('vehicles', { maxMb: 8 });
 
 import { BODY_TYPES } from '../lib/vehicleCatalog.js';
+import { assertDeletable, deleteRow } from '../lib/safeDelete.js';
 export const VEHICLE_TYPES = BODY_TYPES;
 
 const vehicleSchema = z.object({
@@ -123,6 +124,16 @@ router.get('/:id/photo', requirePermission('vehicles.view'), wrap(async (req, re
   const v = await db.query.vehicles.findFirst({ where: and(eq(vehicles.id, req.params.id), eq(vehicles.companyId, req.companyId)) });
   if (!v?.photoPath) throw notFound('Photo');
   await sendStored(res, v.photoPath);
+}));
+
+router.delete('/:id', requirePermission('vehicles.manage'), wrap(async (req, res) => {
+  await assertDeletable('vehicle', req.params.id, [
+    { table: 'subscription_vehicles', column: 'vehicle_id', label: 'subscription link(s)' },
+    { table: 'washing_tasks', column: 'vehicle_id', label: 'washing task(s)' }
+  ]);
+  const row = await deleteRow('vehicles', req.params.id, req.companyId);
+  await audit(req, { action: 'vehicle.delete', entityType: 'vehicle', entityId: row.id });
+  res.json({ ok: true });
 }));
 
 export default router;

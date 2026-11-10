@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import { z } from 'zod';
 import { and, eq, sql, desc, inArray } from 'drizzle-orm';
 import { db, schema } from '../db/index.js';
-import { wrap, notFound, conflict, validationFailed } from '../lib/errors.js';
+import { wrap, notFound, conflict, validationFailed, badRequest } from '../lib/errors.js';
 import { requirePermission } from '../middleware/auth.js';
 import { audit } from '../lib/audit.js';
 import { parsePagination, paged, nextCode, today } from '../lib/util.js';
@@ -15,6 +15,7 @@ import { sendSms } from '../services/smsService.js';
 import { getSetting } from '../services/settingsService.js';
 import { ensureRenewalToken, portalBaseUrl } from '../services/renewalLinkService.js';
 import { BODY_TYPES } from '../lib/vehicleCatalog.js';
+import { assertDeletable, deleteRow } from '../lib/safeDelete.js';
 
 const router = Router();
 const { registrationRequests, compounds, subscriptionPlans, owners, units, vehicles, qrCodes, payments, paymentReceipts, users } = schema;
@@ -117,6 +118,18 @@ router.post('/:id/reject', requirePermission('payments.approve'), wrap(async (re
   if (r.status !== 'pending') throw conflict(`Request already ${r.status}`);
   await db.update(registrationRequests).set({ status: 'rejected', rejectionReason: reason, reviewedBy: req.user.id, reviewedAt: new Date(), updatedAt: new Date() }).where(eq(registrationRequests.id, r.id));
   await audit(req, { action: 'registration.reject', entityType: 'registration_request', entityId: r.id, reason });
+  res.json({ ok: true });
+}));
+
+router.delete('/:id', requirePermission('payments.approve', 'units.manage'), wrap(async (req, res) => {
+  const r = await db.query.registrationRequests.findFirst({ where: and(eq(schema.registrationRequests.id, req.params.id), eq(schema.registrationRequests.companyId, req.companyId)) });
+  if (!r) throw notFound('Request');
+  if (r.status === 'approved') throw badRequest('Approved requests are kept for history');
+  await assertDeletable('registration_request', req.params.id, [
+    
+  ]);
+  const row = await deleteRow('registration_requests', req.params.id, req.companyId);
+  await audit(req, { action: 'registration_request.delete', entityType: 'registration_request', entityId: row.id });
   res.json({ ok: true });
 }));
 

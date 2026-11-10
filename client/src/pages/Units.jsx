@@ -5,7 +5,7 @@ import { useQuery, useDebounced, useLookups } from '../lib/hooks.js';
 import { useI18n } from '../lib/i18n.jsx';
 import { useAuth } from '../lib/auth.jsx';
 import { api } from '../lib/api.js';
-import { PageHeader, DataTable, SearchInput, Select, Modal, Field, Input, Textarea, Spinner, useToast, AsyncSelect } from '../components/ui.jsx';
+import { PageHeader, DataTable, SearchInput, Select, Modal, Field, Input, Textarea, Spinner, useToast, AsyncSelect, DeleteButton } from '../components/ui.jsx';
 
 export function UnitForm({ open, onClose, initial, onSaved, defaultCompoundId }) {
   const { t } = useI18n(); const toast = useToast(); const lookups = useLookups();
@@ -59,6 +59,7 @@ export default function Units() {
     { key: 'ownerEmail', header: t('common.email') },
     { key: 'vehiclesCount', header: t('units.vehicles') },
     { key: 'activeSubscriptions', header: t('compounds.activeSubs') },
+    { key: 'actions', header: '', className: 'text-end', render: (r) => can('units.manage') && <DeleteButton url={`/admin/units/${r.id}`} name={r.unitNumber} onDone={reload} /> },
   ];
   return (
     <div className="fade-in">

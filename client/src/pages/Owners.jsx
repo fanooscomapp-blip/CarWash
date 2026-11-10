@@ -5,7 +5,7 @@ import { useQuery, useDebounced, useLookups } from '../lib/hooks.js';
 import { useI18n } from '../lib/i18n.jsx';
 import { useAuth } from '../lib/auth.jsx';
 import { api } from '../lib/api.js';
-import { PageHeader, DataTable, SearchInput, Select, Modal, Field, Input, Textarea, Spinner, useToast } from '../components/ui.jsx';
+import { PageHeader, DataTable, SearchInput, Select, Modal, Field, Input, Textarea, Spinner, useToast, DeleteButton } from '../components/ui.jsx';
 
 export function OwnerForm({ open, onClose, initial, onSaved }) {
   const { t } = useI18n(); const toast = useToast();
@@ -43,6 +43,7 @@ export default function Owners() {
     { key: 'email', header: t('common.email') },
     { key: 'compoundNames', header: t('owners.compounds') },
     { key: 'unitsCount', header: t('owners.units') }, { key: 'vehiclesCount', header: t('owners.vehicles') }, { key: 'activeSubscriptions', header: t('owners.activeSubs') },
+    { key: 'actions', header: '', className: 'text-end', render: (r) => can('owners.manage') && <DeleteButton url={`/admin/owners/${r.id}`} name={r.name} onDone={reload} /> },
   ];
   return (
     <div className="fade-in">

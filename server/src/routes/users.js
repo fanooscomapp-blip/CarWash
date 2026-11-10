@@ -8,6 +8,7 @@ import { requirePermission } from '../middleware/auth.js';
 import { audit } from '../lib/audit.js';
 import { parsePagination, paged, compact, ilike } from '../lib/util.js';
 import { PERMISSIONS, PERMISSION_KEYS } from '../lib/permissions.js';
+import { assertDeletable, deleteRow } from '../lib/safeDelete.js';
 
 const router = Router();
 const { users, roles, staffCompounds, compounds } = schema;
@@ -119,6 +120,18 @@ router.delete('/roles/:id', requirePermission('roles.manage'), wrap(async (req, 
   if (count > 0) throw badRequest(`Role is assigned to ${count} user(s)`);
   await db.delete(roles).where(eq(roles.id, before.id));
   await audit(req, { action: 'role.delete', entityType: 'role', entityId: before.id, before });
+  res.json({ ok: true });
+}));
+
+router.delete('/:id', requirePermission('users.manage'), wrap(async (req, res) => {
+  if (req.params.id === req.user.id) throw badRequest('You cannot delete your own account');
+  await assertDeletable('user', req.params.id, [
+    { table: 'washing_tasks', column: 'assigned_to', label: 'washing task(s)' },
+    { table: 'washing_operations', column: 'staff_id', label: 'wash record(s)' },
+    { table: 'audit_logs', column: 'user_id', label: 'audit log entries (deactivate this user instead)' }
+  ]);
+  const row = await deleteRow('users', req.params.id, req.companyId);
+  await audit(req, { action: 'user.delete', entityType: 'user', entityId: row.id });
   res.json({ ok: true });
 }));
 

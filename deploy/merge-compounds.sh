@@ -2,13 +2,13 @@
 # Move EVERYTHING (units, vehicles, subscriptions, payments, tasks, staff schedules, requests) from one or more
 # compounds into a target compound, then delete the emptied compounds. Takes a DB backup first. One transaction.
 #
-#   bash /opt/carwash/deploy/merge-compounds.sh "MDB7,PHO" MVD
-#                                              ^ source compound codes   ^ target compound code
+#   bash /opt/carwash/deploy/merge-compounds.sh "MDB7,PHO" MVD        # move + delete the emptied compounds
+#   bash /opt/carwash/deploy/merge-compounds.sh ZAYED_DOUNEZ MVD keep   # move, but keep the (now empty) compound as inactive
 #
 # Unit numbers that already exist in the target get the source code as a suffix (A-101 → A-101-MDB7).
 set -euo pipefail
 cd "$(dirname "$0")/.."
-SRC="${1:?source compound codes, comma separated}"; DST="${2:?target compound code}"
+SRC="${1:?source compound codes, comma separated}"; DST="${2:?target compound code}"; KEEP="${3:-}"
 C="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
 DBU="${POSTGRES_USER:-carwash}"; DBN="${POSTGRES_DB:-carwash}"
 PSQL="$C exec -T db psql -v ON_ERROR_STOP=1 -U $DBU $DBN"
@@ -56,8 +56,8 @@ INSERT INTO staff_schedule (user_id, dow, compound_id, capacity)
   GROUP BY s.user_id, s.dow, mv.dst_id
   ON CONFLICT (user_id, dow, compound_id) DO UPDATE SET capacity = staff_schedule.capacity + EXCLUDED.capacity;
 DELETE FROM staff_schedule s USING mv WHERE s.compound_id = mv.src_id;
--- finally the emptied compounds
-DELETE FROM compounds c USING mv WHERE c.id = mv.src_id;
+-- finally the emptied compounds: delete, or keep as inactive when asked
+$( [ "$KEEP" = "keep" ] && echo "UPDATE compounds c SET status = 'inactive' FROM mv WHERE c.id = mv.src_id;" || echo "DELETE FROM compounds c USING mv WHERE c.id = mv.src_id;" )
 
 SELECT c.code, c.name,
   (SELECT count(*) FROM units u WHERE u.compound_id = c.id) AS units,

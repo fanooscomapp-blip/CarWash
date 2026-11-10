@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, createContext, useContext, useCallback } from 'react';
-import { X, ChevronLeft, ChevronRight, Loader2, AlertCircle, CheckCircle2, Inbox, Search } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Loader2, AlertCircle, CheckCircle2, Inbox, Search, Trash2 } from 'lucide-react';
 import { useT, useI18n } from '../lib/i18n.jsx';
+import { api } from '../lib/api.js';
 
 // ───────── Status badge ─────────
 const STATUS_STYLES = {
@@ -282,5 +283,18 @@ export function AsyncSelect({ fetchOptions, value, onChange, renderOption, place
         </div>
       )}
     </div>
+  );
+}
+
+/** Trash button + confirmation; calls DELETE url and reports the server's reason when the record is still referenced. */
+export function DeleteButton({ url, name, onDone, label, className = '', iconOnly = true }) {
+  const { t } = useI18n(); const toast = useToast();
+  const [open, setOpen] = useState(false); const [busy, setBusy] = useState(false);
+  const run = async () => { setBusy(true); try { await api.delete(url); toast.success(t('common.deleted')); setOpen(false); onDone?.(); } catch (e) { toast.error(e.message); } finally { setBusy(false); } };
+  return (
+    <>
+      <button type="button" className={`btn-ghost btn-sm text-red-600 hover:bg-red-50 ${className}`} title={t('common.delete')} onClick={(e) => { e.stopPropagation(); setOpen(true); }}><Trash2 size={15} />{!iconOnly && (label || t('common.delete'))}</button>
+      <ConfirmDialog open={open} onClose={() => setOpen(false)} onConfirm={run} loading={busy} danger title={t('common.delete')} message={t('common.deleteConfirm', { name: name || '' })} confirmLabel={t('common.delete')} />
+    </>
   );
 }

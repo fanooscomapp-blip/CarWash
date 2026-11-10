@@ -7,7 +7,7 @@ import { useAuth } from '../lib/auth.jsx';
 import { api } from '../lib/api.js';
 import { fmtDate, todayISO } from '../lib/format.js';
 import { BrandPicker, ColorPicker, GpsField, useGpsCapture, ColorDot, colorName, BodyTypePicker } from '../components/VehiclePickers.jsx';
-import { PageHeader, DataTable, SearchInput, Select, Modal, Field, Input, Textarea, Spinner, useToast, AsyncSelect, StatusBadge } from '../components/ui.jsx';
+import { PageHeader, DataTable, SearchInput, Select, Modal, Field, Input, Textarea, Spinner, useToast, AsyncSelect, StatusBadge, DeleteButton } from '../components/ui.jsx';
 
 export function VehicleForm({ open, onClose, initial, onSaved, defaultUnit }) {
   const { t } = useI18n(); const toast = useToast(); const catalog = useQuery('/admin/registration/catalog');
@@ -67,6 +67,7 @@ export default function Vehicles() {
     { key: 'currentSubscriptionStatus', header: t('vehicles.currentSub'), render: (r) => <div><StatusBadge status={r.currentSubscriptionStatus} />{r.currentSubscriptionEnd && <p className="text-xs text-slate-500 mt-1">{r.currentSubscriptionPlan} · {t('vehicles.expires')} {fmtDate(r.currentSubscriptionEnd, lang)}</p>}</div> },
     { key: 'currentWashesRemaining', header: t('subs.washes'), render: (r) => r.currentSubscriptionId ? `${r.currentWashesRemaining} ${t('vehicles.washesLeft')}` : '—' },
     { key: 'status', header: t('common.status'), render: (r) => <StatusBadge status={r.status} label={t(`common.${r.status}`)} /> },
+    { key: 'actions', header: '', className: 'text-end', render: (r) => can('vehicles.manage') && <DeleteButton url={`/admin/vehicles/${r.id}`} name={r.plateNumber} onDone={reload} /> },
   ];
   return (
     <div className="fade-in">

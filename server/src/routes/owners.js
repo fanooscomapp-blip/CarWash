@@ -7,6 +7,7 @@ import { requirePermission } from '../middleware/auth.js';
 import { audit } from '../lib/audit.js';
 import { parsePagination, paged, compact, ilike } from '../lib/util.js';
 import { normalizeMobile } from '../lib/mobile.js';
+import { assertDeletable, deleteRow } from '../lib/safeDelete.js';
 
 const router = Router();
 const { owners, units, vehicles, subscriptions, payments, compounds, subscriptionPlans } = schema;
@@ -69,6 +70,18 @@ router.put('/:id', requirePermission('owners.manage'), wrap(async (req, res) => 
   const [row] = await db.update(owners).set({ ...compact(body), updatedAt: new Date() }).where(eq(owners.id, before.id)).returning();
   await audit(req, { action: 'owner.update', entityType: 'owner', entityId: row.id, before, after: row });
   res.json(row);
+}));
+
+router.delete('/:id', requirePermission('owners.manage'), wrap(async (req, res) => {
+  await assertDeletable('owner', req.params.id, [
+    { table: 'vehicles', column: 'owner_id', label: 'vehicle(s)' },
+    { table: 'subscriptions', column: 'owner_id', label: 'subscription(s)' },
+    { table: 'units', column: 'owner_id', label: 'unit(s)' },
+    { table: 'payments', column: 'owner_id', label: 'payment(s)' }
+  ]);
+  const row = await deleteRow('owners', req.params.id, req.companyId);
+  await audit(req, { action: 'owner.delete', entityType: 'owner', entityId: row.id });
+  res.json({ ok: true });
 }));
 
 export default router;

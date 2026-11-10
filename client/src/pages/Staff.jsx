@@ -5,7 +5,7 @@ import { useI18n } from '../lib/i18n.jsx';
 import { useAuth } from '../lib/auth.jsx';
 import { api } from '../lib/api.js';
 import { fmtDate, todayISO } from '../lib/format.js';
-import { PageHeader, DataTable, Modal, Field, Input, Spinner, useToast, Toggle, ConfirmDialog, StatusBadge, Select } from '../components/ui.jsx';
+import { PageHeader, DataTable, Modal, Field, Input, Spinner, useToast, Toggle, ConfirmDialog, StatusBadge, Select, DeleteButton } from '../components/ui.jsx';
 
 const WEEK = [6, 0, 1, 2, 3, 4, 5];
 
@@ -125,6 +125,7 @@ export default function Staff() {
       {r.is_active && !r.on_leave_today && <button className="btn-secondary btn-sm text-red-700" onClick={(e) => { e.stopPropagation(); setAbsent(r); }} title={t('staff.absentToday')}><UserX size={14} />{t('staff.absentToday')}</button>}
       <button className="btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); setLeave(r); }} title={t('staff.leaves')}><CalendarOff size={14} /></button>
       <button className="btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); setModal(r); }} title={t('common.edit')}><Pencil size={14} /></button>
+      <DeleteButton url={`/admin/users/${r.id}`} name={r.name} onDone={reload} />
     </div> },
   ];
   return (

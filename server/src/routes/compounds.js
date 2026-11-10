@@ -6,6 +6,7 @@ import { wrap, notFound, badRequest } from '../lib/errors.js';
 import { requirePermission } from '../middleware/auth.js';
 import { audit } from '../lib/audit.js';
 import { parsePagination, paged, compact, ilike } from '../lib/util.js';
+import { assertDeletable, deleteRow } from '../lib/safeDelete.js';
 
 const router = Router();
 const { compounds, units, vehicles, subscriptions, payments, staffCompounds, users } = schema;
@@ -102,6 +103,19 @@ router.put('/:id/staff', requirePermission('compounds.manage', 'staff.manage'), 
     if (userIds.length) await t.insert(staffCompounds).values(userIds.map((userId) => ({ userId, compoundId: compound.id })));
     await audit(req, { action: 'compound.assign_staff', entityType: 'compound', entityId: compound.id, after: { userIds } }, t);
   });
+  res.json({ ok: true });
+}));
+
+router.delete('/:id', requirePermission('compounds.manage'), wrap(async (req, res) => {
+  await assertDeletable('compound', req.params.id, [
+    { table: 'units', column: 'compound_id', label: 'unit(s)' },
+    { table: 'vehicles', column: 'compound_id', label: 'vehicle(s)' },
+    { table: 'subscriptions', column: 'compound_id', label: 'subscription(s)' },
+    { table: 'washing_tasks', column: 'compound_id', label: 'washing task(s)' },
+    { table: 'registration_requests', column: 'compound_id', label: 'registration request(s)' }
+  ]);
+  const row = await deleteRow('compounds', req.params.id, req.companyId);
+  await audit(req, { action: 'compound.delete', entityType: 'compound', entityId: row.id });
   res.json({ ok: true });
 }));
 

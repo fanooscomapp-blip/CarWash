@@ -6,7 +6,7 @@ import { useI18n } from '../lib/i18n.jsx';
 import { useAuth } from '../lib/auth.jsx';
 import { api } from '../lib/api.js';
 import { fmtDateTime, fmtMoney } from '../lib/format.js';
-import { PageHeader, DataTable, Tabs, Select, StatusBadge, Modal, Field, Input, Textarea, ConfirmDialog, useToast, DescriptionList, Spinner } from '../components/ui.jsx';
+import { PageHeader, DataTable, Tabs, Select, StatusBadge, Modal, Field, Input, Textarea, ConfirmDialog, useToast, DescriptionList, Spinner, DeleteButton } from '../components/ui.jsx';
 import { BrandPicker, ColorPicker, colorName } from '../components/VehiclePickers.jsx';
 
 function Receipt({ id }) {
@@ -81,6 +81,7 @@ export default function RegistrationRequests() {
     { key: 'vehicles', header: t('common.vehicles'), render: (r) => <span dir="ltr" className="font-medium">{r.vehicles.map((v) => v.plateNumber).join(', ')}</span> },
     { key: 'planName', header: t('common.plan'), render: (r) => <div><p>{r.planName}</p><p className="text-xs font-semibold">{fmtMoney(r.amount, cur, lang)}</p></div> },
     { key: 'status', header: t('common.status'), render: (r) => <StatusBadge status={r.status === 'pending' ? 'pending_verification' : r.status} label={t(`regreq.status_${r.status}`)} /> },
+    { key: 'actions', header: '', className: 'text-end', render: (r) => r.status !== 'approved' && can('units.manage', 'payments.approve') && <DeleteButton url={`/admin/registration-requests/${r.id}`} name={r.ownerName} onDone={reload} /> },
   ];
   return (
     <div className="fade-in">

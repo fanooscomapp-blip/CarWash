@@ -5,7 +5,7 @@ import { useI18n } from '../lib/i18n.jsx';
 import { useAuth } from '../lib/auth.jsx';
 import { api } from '../lib/api.js';
 import { fmtDateTime } from '../lib/format.js';
-import { PageHeader, DataTable, SearchInput, Select, StatusBadge, Tabs, Modal, Field, Input, Textarea, Spinner, useToast, Toggle, ConfirmDialog, Loading } from '../components/ui.jsx';
+import { PageHeader, DataTable, SearchInput, Select, StatusBadge, Tabs, Modal, Field, Input, Textarea, Spinner, useToast, Toggle, ConfirmDialog, Loading, DeleteButton } from '../components/ui.jsx';
 
 function UserForm({ open, onClose, initial, roles, onSaved }) {
   const { t } = useI18n(); const toast = useToast(); const lookups = useLookups();
