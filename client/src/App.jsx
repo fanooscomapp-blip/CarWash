@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { useAuth } from './lib/auth.jsx';
 import { useT } from './lib/i18n.jsx';
 import Layout from './components/Layout.jsx';
@@ -40,6 +40,8 @@ function Protected({ children }) {
   return children;
 }
 
+function ShortRenew() { const { token } = useParams(); return <Navigate to={`/p/renew/${token}`} replace />; }
+
 function Soon({ phase = 2 }) {
   const t = useT();
   return <Empty title={t(`common.phase${phase}`)} hint="This module is scaffolded in the database and API and will be delivered in the next phase." />;
@@ -50,6 +52,7 @@ export default function App() {
     <Routes>
       <Route path="/p/*" element={<PortalApp />} />
       <Route path="/s/*" element={<StaffApp />} />
+      <Route path="/r/:token" element={<ShortRenew />} />
       <Route path="/login" element={<Login />} />
       <Route element={<Protected><Layout /></Protected>}>
         <Route index element={<Dashboard />} />

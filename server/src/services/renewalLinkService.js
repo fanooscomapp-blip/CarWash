@@ -20,7 +20,7 @@ export async function ensureRenewalToken(subscriptionId, tx = db) {
   const portal = await getSetting(sub.companyId, 'portal');
   const now = new Date();
   if (sub.renewalToken && sub.renewalTokenExpiresAt && sub.renewalTokenExpiresAt > now) return sub.renewalToken;
-  const token = crypto.randomBytes(24).toString('base64url');
+  const token = crypto.randomBytes(8).toString('base64url').replace(/[-_]/g, 'x').slice(0, 10); // short enough for one SMS segment
   const expires = new Date(now.getTime() + (portal.linkValidDays || 30) * 86400000);
   await tx.update(subscriptions).set({ renewalToken: token, renewalTokenExpiresAt: expires }).where(eq(subscriptions.id, subscriptionId));
   return token;
@@ -29,7 +29,7 @@ export async function ensureRenewalToken(subscriptionId, tx = db) {
 export async function renewalLink(subscriptionId) {
   const [sub] = await db.select({ companyId: subscriptions.companyId }).from(subscriptions).where(eq(subscriptions.id, subscriptionId));
   const token = await ensureRenewalToken(subscriptionId);
-  return `${await portalBaseUrl(sub.companyId)}/p/renew/${token}`;
+  return `${await portalBaseUrl(sub.companyId)}/r/${token}`;
 }
 
 async function subscriptionContext(subscriptionId) {

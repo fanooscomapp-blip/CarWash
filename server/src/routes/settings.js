@@ -9,6 +9,7 @@ import { getAllSettings, getSetting, setSetting, maskSecrets, SETTING_DEFAULTS }
 import { compact } from '../lib/util.js';
 import { isConfigured, sendSms } from '../services/smsService.js';
 import { normalizeMobile } from '../lib/mobile.js';
+import { DEFAULT_TEMPLATES } from '../db/seed.js';
 
 const router = Router();
 
@@ -66,6 +67,16 @@ router.put('/sms-templates/:id', requirePermission('sms.send', 'settings.manage'
   if (!before) throw badRequest('Template not found');
   const [row] = await db.update(schema.smsTemplates).set({ ...compact(body), updatedAt: new Date() }).where(eq(schema.smsTemplates.id, before.id)).returning();
   await audit(req, { action: 'sms.template_update', entityType: 'sms_template', entityId: row.id, before: { body: before.body }, after: { body: row.body } });
+  res.json(row);
+}));
+
+router.post('/sms-templates/:id/reset', requirePermission('sms.send', 'settings.manage'), wrap(async (req, res) => {
+  const before = await db.query.smsTemplates.findFirst({ where: and(eq(schema.smsTemplates.id, req.params.id), eq(schema.smsTemplates.companyId, req.companyId)) });
+  if (!before) throw badRequest('Template not found');
+  const def = DEFAULT_TEMPLATES.find(([k, l]) => k === before.key && l === before.lang);
+  if (!def) throw badRequest('No default for this template');
+  const [row] = await db.update(schema.smsTemplates).set({ body: def[2], updatedAt: new Date() }).where(eq(schema.smsTemplates.id, before.id)).returning();
+  await audit(req, { action: 'sms.template_reset', entityType: 'sms_template', entityId: row.id, before: { body: before.body }, after: { body: row.body } });
   res.json(row);
 }));
 

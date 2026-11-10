@@ -42,7 +42,7 @@ export default function SmsCenter() {
         <div className="space-y-3">
           <p className="text-xs text-slate-500">{t('sms.placeholders')}: {templates.data.placeholders.map((p) => <code key={p} className="bg-slate-100 rounded px-1 mx-0.5">{`{${p}}`}</code>)}</p>
           <div className="grid md:grid-cols-2 gap-3">{templates.data.templates.map((x) => (
-            <div key={x.id} className="card p-4"><div className="flex items-center justify-between mb-2"><p className="font-mono text-xs font-semibold">{x.key} <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] uppercase">{x.lang}</span></p>{can('sms.send') && <button className="btn-ghost btn-sm" onClick={() => setTpl(x)}><Pencil size={13} />{t('common.edit')}</button>}</div><p className="text-sm text-slate-700 whitespace-pre-wrap" dir="auto">{x.body}</p></div>))}</div>
+            <div key={x.id} className="card p-4"><div className="flex items-center justify-between mb-2"><p className="font-mono text-xs font-semibold">{x.key} <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] uppercase">{x.lang}</span> <span className={`rounded px-1.5 py-0.5 text-[10px] ${smsSize(x.body).segments > 1 ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700'}`}>{smsSize(x.body).segments} SMS</span></p>{can('sms.send') && <button className="btn-ghost btn-sm" onClick={() => setTpl(x)}><Pencil size={13} />{t('common.edit')}</button>}</div><p className="text-sm text-slate-700 whitespace-pre-wrap" dir="auto">{x.body}</p></div>))}</div>
         </div>
       ))}
       {compose && <Compose onClose={() => setCompose(false)} onSent={() => { logs.reload(); st.reload(); }} lookups={lookups.data} />}
@@ -75,8 +75,15 @@ function Compose({ onClose, onSent, lookups }) {
   );
 }
 
+/** SMS size: Arabic/any non-GSM char → UCS-2 (70 per segment, 67 when split); otherwise GSM-7 (160 / 153). Placeholders are replaced by typical values. */
+const SAMPLE = { OwnerName: 'محمد أحمد', VehicleNumber: 'ABC 1234', UnitNumber: 'A-101', CompoundName: 'Mivida', ExpiryDate: '31/12/2026', RenewalLink: 'https://cityeyeservices.com/r/aB3dE5fG7h', RenewalId: 'REN-000123', Reason: 'صورة غير واضحة', RemainingWashes: '7', Code: '123456', Minutes: '5', Amount: '450', PlanName: 'Single Car Package' };
+const GSM = /^[A-Za-z0-9 @£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ!"#¤%&'()*+,\-.\/:;<=>?¡ÄÖÑÜ§¿äöñüà^{}\\\[~\]|€]*$/;
+export function smsSize(text) { const s = String(text || '').replace(/\{(\w+)\}/g, (_, k) => SAMPLE[k] ?? ''); const ucs = !GSM.test(s); const len = s.length; const single = ucs ? 70 : 160, multi = ucs ? 67 : 153; return { len, ucs, segments: len <= single ? 1 : Math.ceil(len / multi), single }; }
+
 function TemplateEdit({ tpl, onClose, onSaved }) {
   const { t } = useI18n(); const toast = useToast(); const [body, setBody] = useState(tpl.body); const [busy, setBusy] = useState(false);
+  const size = smsSize(body);
+  const reset = async () => { setBusy(true); try { const { data } = await api.post(`/admin/settings/sms-templates/${tpl.id}/reset`); setBody(data.body); toast.success(t('common.success')); onSaved(); } catch (e) { toast.error(e.message); } finally { setBusy(false); } };
   const save = async () => { setBusy(true); try { await api.put(`/admin/settings/sms-templates/${tpl.id}`, { body }); toast.success(t('common.success')); onSaved(); onClose(); } catch (e) { toast.error(e.message); } finally { setBusy(false); } };
-  return <Modal open onClose={onClose} title={`${tpl.key} · ${tpl.lang.toUpperCase()}`} footer={<><button className="btn-secondary" onClick={onClose}>{t('common.cancel')}</button><button className="btn-primary" disabled={busy} onClick={save}>{busy && <Spinner />}{t('common.save')}</button></>}><Textarea rows={6} dir="auto" value={body} onChange={(e) => setBody(e.target.value)} /><p className="text-xs text-slate-500 mt-2">{body.length} chars</p></Modal>;
+  return <Modal open onClose={onClose} title={`${tpl.key} · ${tpl.lang.toUpperCase()}`} footer={<><button className="btn-secondary" onClick={reset} disabled={busy}>{t('sms.resetDefault')}</button><button className="btn-secondary" onClick={onClose}>{t('common.cancel')}</button><button className="btn-primary" disabled={busy} onClick={save}>{busy && <Spinner />}{t('common.save')}</button></>}><div className={`mb-2 text-xs ${size.segments > 1 ? 'text-orange-700' : 'text-emerald-700'}`}>{t('sms.sizeInfo', { n: size.len, seg: size.segments, enc: size.ucs ? 'Unicode/عربي' : 'GSM', max: size.single })}</div><Textarea rows={6} dir="auto" value={body} onChange={(e) => setBody(e.target.value)} /><p className="text-xs text-slate-500 mt-2">{body.length} chars</p></Modal>;
 }

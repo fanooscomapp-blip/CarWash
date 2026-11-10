@@ -9,23 +9,25 @@ import { nextCode, addDays, today } from '../lib/util.js';
 import { createSubscription, renewSubscription } from '../services/subscriptionService.js';
 
 const SMS_TEMPLATES = [
-  ['expiry_reminder', 'en', 'Dear Customer, your car wash subscription for vehicle {VehicleNumber}, Unit {UnitNumber}, Compound {CompoundName}, will expire on {ExpiryDate}. Renew your subscription using the secure link below: {RenewalLink}'],
-  ['expiry_reminder', 'ar', 'عزيزي العميل، اشتراك غسيل السيارة للمركبة {VehicleNumber}، وحدة {UnitNumber}، كمبوند {CompoundName}، ينتهي بتاريخ {ExpiryDate}. جدد اشتراكك عبر الرابط الآمن: {RenewalLink}'],
-  ['expired', 'en', 'Your car wash subscription for vehicle {VehicleNumber} expired on {ExpiryDate}. Renew now: {RenewalLink}'],
-  ['expired', 'ar', 'انتهى اشتراك غسيل المركبة {VehicleNumber} بتاريخ {ExpiryDate}. جدد الآن: {RenewalLink}'],
-  ['renewal_received', 'en', 'We received your renewal request {RenewalId} for vehicle {VehicleNumber}. We will confirm once the payment is verified.'],
-  ['renewal_received', 'ar', 'استلمنا طلب التجديد {RenewalId} للمركبة {VehicleNumber}. سنؤكد بعد التحقق من الدفع.'],
-  ['payment_approved', 'en', 'Payment confirmed. Your subscription for vehicle {VehicleNumber} is active until {ExpiryDate}. Thank you!'],
-  ['payment_approved', 'ar', 'تم تأكيد الدفع. اشتراك المركبة {VehicleNumber} فعال حتى {ExpiryDate}. شكراً لك!'],
-  ['payment_rejected', 'en', 'Your payment receipt for {RenewalId} could not be verified: {Reason}. Please upload a new receipt: {RenewalLink}'],
-  ['payment_rejected', 'ar', 'تعذر التحقق من إيصال الدفع {RenewalId}: {Reason}. يرجى رفع إيصال جديد: {RenewalLink}'],
-  ['wash_completed', 'en', 'Your vehicle {VehicleNumber} was washed today. Remaining washes: {RemainingWashes}.'],
-  ['wash_completed', 'ar', 'تم غسيل مركبتك {VehicleNumber} اليوم. الغسلات المتبقية: {RemainingWashes}.'],
-  ['registration_approved', 'en', 'Welcome {OwnerName}! Your car wash subscription ({PlanName}) for {VehicleNumber} is active until {ExpiryDate}. Manage it here: {RenewalLink}'],
-  ['registration_approved', 'ar', 'أهلاً {OwnerName}! تم تفعيل اشتراك غسيل السيارة ({PlanName}) للمركبة {VehicleNumber} حتى {ExpiryDate}. لمتابعة اشتراكك: {RenewalLink}'],
-  ['otp', 'en', 'Your Car Wash verification code is {Code}. It expires in {Minutes} minutes.'],
-  ['otp', 'ar', 'رمز التحقق الخاص بك هو {Code}. صالح لمدة {Minutes} دقائق.'],
+  // Kept short on purpose: Arabic SMS = 70 chars per segment, Latin = 160. The link is ~40 chars.
+  ['expiry_reminder', 'en', 'Car wash: subscription for {VehicleNumber} ends {ExpiryDate}. Renew: {RenewalLink}'],
+  ['expiry_reminder', 'ar', 'اشتراك غسيل {VehicleNumber} ينتهي {ExpiryDate}. للتجديد: {RenewalLink}'],
+  ['expired', 'en', 'Car wash: subscription for {VehicleNumber} expired {ExpiryDate}. Renew: {RenewalLink}'],
+  ['expired', 'ar', 'انتهى اشتراك غسيل {VehicleNumber} في {ExpiryDate}. للتجديد: {RenewalLink}'],
+  ['renewal_received', 'en', 'Car wash: renewal request for {VehicleNumber} received. We will confirm after checking the payment.'],
+  ['renewal_received', 'ar', 'استلمنا طلب تجديد {VehicleNumber}. سنؤكد بعد مراجعة الدفع.'],
+  ['payment_approved', 'en', 'Car wash: payment confirmed. {VehicleNumber} is active until {ExpiryDate}. Thank you!'],
+  ['payment_approved', 'ar', 'تم تأكيد الدفع. اشتراك {VehicleNumber} فعال حتى {ExpiryDate}. شكراً!'],
+  ['payment_rejected', 'en', 'Car wash: receipt not accepted ({Reason}). Upload a new one: {RenewalLink}'],
+  ['payment_rejected', 'ar', 'لم يُقبل الإيصال ({Reason}). ارفع إيصالاً جديداً: {RenewalLink}'],
+  ['wash_completed', 'en', 'Car wash: {VehicleNumber} washed today. Remaining washes: {RemainingWashes}.'],
+  ['wash_completed', 'ar', 'تم غسيل {VehicleNumber} اليوم. المتبقي: {RemainingWashes} غسلات.'],
+  ['registration_approved', 'en', 'Welcome! {VehicleNumber} is subscribed ({PlanName}) until {ExpiryDate}. Your page: {RenewalLink}'],
+  ['registration_approved', 'ar', 'أهلاً! تم تفعيل اشتراك {VehicleNumber} حتى {ExpiryDate}. صفحتك: {RenewalLink}'],
+  ['otp', 'en', 'Car wash code: {Code} (valid {Minutes} min)'],
+  ['otp', 'ar', 'رمز الدخول: {Code} (صالح {Minutes} دقائق)'],
 ];
+export const DEFAULT_TEMPLATES = SMS_TEMPLATES;
 
 // Idempotent upgrades for existing databases (new templates added in later phases)
 export async function ensureTemplates() {
