@@ -216,6 +216,7 @@ router.delete('/:id', requirePermission('subscriptions.manage'), wrap(async (req
   await db.execute(sql`DELETE FROM washing_operations WHERE subscription_id = ${s.id}`);
   await db.execute(sql`DELETE FROM washing_tasks WHERE subscription_id = ${s.id}`);
   await db.execute(sql`DELETE FROM subscription_reminders WHERE subscription_id = ${s.id}`);
+  await db.execute(sql`UPDATE payments SET renewal_id = NULL WHERE renewal_id IN (SELECT id FROM subscription_renewals WHERE new_subscription_id = ${s.id} OR previous_subscription_id = ${s.id})`);
   await db.execute(sql`DELETE FROM subscription_renewals WHERE new_subscription_id = ${s.id} OR previous_subscription_id = ${s.id}`);
   await db.execute(sql`DELETE FROM subscription_vehicles WHERE subscription_id = ${s.id}`);
   await db.execute(sql`UPDATE subscriptions SET renewed_from_id = NULL WHERE renewed_from_id = ${s.id}`);
