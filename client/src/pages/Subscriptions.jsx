@@ -1,18 +1,19 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, RefreshCw } from 'lucide-react';
+import { Plus, RefreshCw, XCircle } from 'lucide-react';
 import { useQuery, useDebounced, useLookups } from '../lib/hooks.js';
 import { useI18n } from '../lib/i18n.jsx';
+import { api } from '../lib/api.js';
 import { useAuth } from '../lib/auth.jsx';
 import { fmtDate, fmtMoney } from '../lib/format.js';
-import { PageHeader, DataTable, SearchInput, Select, StatusBadge, Input } from '../components/ui.jsx';
+import { PageHeader, DataTable, SearchInput, Select, StatusBadge, Input, DeleteButton, ConfirmDialog, useToast } from '../components/ui.jsx';
 import RenewModal from '../components/RenewModal.jsx';
 
 export default function Subscriptions() {
-  const { t, lang } = useI18n(); const { can, company } = useAuth(); const navigate = useNavigate(); const lookups = useLookups();
+  const { t, lang } = useI18n(); const toast = useToast(); const { can, company } = useAuth(); const navigate = useNavigate(); const lookups = useLookups();
   const plans = useQuery('/admin/plans');
   const [sp, setSp] = useSearchParams();
-  const [search, setSearch] = useState(''); const [page, setPage] = useState(1); const [renew, setRenew] = useState(null);
+  const [search, setSearch] = useState(''); const [page, setPage] = useState(1); const [renew, setRenew] = useState(null); const [cancel, setCancel] = useState(null); const [cancelBusy, setCancelBusy] = useState(false);
   const filters = { status: sp.get('status') || '', compoundId: sp.get('compoundId') || '', planId: sp.get('planId') || '', month: sp.get('month') || '', kind: sp.get('kind') || '' };
   const setFilter = (k, v) => { const n = new URLSearchParams(sp); v ? n.set(k, v) : n.delete(k); setSp(n); setPage(1); };
   const q = useDebounced(search);
@@ -26,7 +27,11 @@ export default function Subscriptions() {
     { key: 'washes', header: t('subs.washes'), render: (r) => `${r.washesUsed} / ${r.washesAllowed}` },
     { key: 'finalAmount', header: t('subs.finalAmount'), render: (r) => <div><p>{fmtMoney(r.finalAmount, cur, lang)}</p><p className="text-xs text-slate-500">{t(`status.${r.paymentStatus}`)}</p></div> },
     { key: 'status', header: t('common.status'), render: (r) => <div><StatusBadge status={r.status} />{r.renewedToId && <p className="text-[11px] text-slate-500 mt-1">{t('subs.renewedTo')} ✓</p>}</div> },
-    { key: 'actions', header: '', className: 'text-end', render: (r) => can('subscriptions.renew', 'subscriptions.manage') && ['active', 'expiring_soon', 'expired'].includes(r.status) && !r.renewedToId && <button className="btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); setRenew(r); }}><RefreshCw size={13} />{t('vehicles.renew')}</button> },
+    { key: 'actions', header: '', className: 'text-end', render: (r) => <span className="inline-flex items-center gap-1">
+      {can('subscriptions.renew', 'subscriptions.manage') && ['active', 'expiring_soon', 'expired'].includes(r.status) && !r.renewedToId && <button className="btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); setRenew(r); }}><RefreshCw size={13} />{t('vehicles.renew')}</button>}
+      {can('subscriptions.manage') && ['active', 'expiring_soon'].includes(r.status) && <button className="btn-ghost btn-sm" title={t('subs.cancel')} onClick={(e) => { e.stopPropagation(); setCancel(r); }}><XCircle size={14} /></button>}
+      {can('subscriptions.manage') && !['active', 'expiring_soon', 'suspended'].includes(r.status) && <DeleteButton url={`/admin/subscriptions/${r.id}`} name={r.subscriptionCode} onDone={reload} />}
+    </span> },
   ];
   return (
     <div className="fade-in">
@@ -41,6 +46,7 @@ export default function Subscriptions() {
       </div>
       <DataTable columns={columns} rows={data?.data} loading={loading} error={error} onRetry={reload} pagination={data?.pagination} onPage={setPage} onRowClick={(r) => navigate(`/subscriptions/${r.id}`)} />
       {renew && <RenewModal open onClose={() => setRenew(null)} subscription={renew} onRenewed={reload} />}
+      <ConfirmDialog open={!!cancel} onClose={() => setCancel(null)} loading={cancelBusy} danger title={t('subs.cancel')} message={cancel && `${cancel.subscriptionCode} · ${cancel.plates}`} reasonLabel={t('subs.cancelReason')} confirmLabel={t('common.confirm')} onConfirm={async (reason) => { setCancelBusy(true); try { await api.post(`/admin/subscriptions/${cancel.id}/cancel`, { reason }); toast.success(t('common.success')); setCancel(null); reload(); } catch (e) { toast.error(e.message); } finally { setCancelBusy(false); } }} />
     </div>
   );
 }

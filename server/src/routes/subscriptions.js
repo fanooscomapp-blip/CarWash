@@ -208,18 +208,18 @@ router.put('/:id/notes', requirePermission('subscriptions.manage'), wrap(async (
 router.delete('/:id', requirePermission('subscriptions.manage'), wrap(async (req, res) => {
   const s = await db.query.subscriptions.findFirst({ where: and(eq(schema.subscriptions.id, req.params.id), eq(schema.subscriptions.companyId, req.companyId)) });
   if (!s) throw notFound('Subscription');
-  if (!['cancelled', 'pending_payment'].includes(s.status)) throw badRequest('Only cancelled or pending-payment subscriptions can be deleted. Cancel it first.');
+  if (['active', 'expiring_soon', 'suspended'].includes(s.status)) throw badRequest('Cancel the subscription first, then delete it.');
+  // Full cleanup of everything that hangs off this subscription (receipts, payments, tasks + wash records + photos, reminders, renewal links)
   await db.execute(sql`DELETE FROM payment_receipts WHERE payment_id IN (SELECT id FROM payments WHERE subscription_id = ${s.id})`);
-  await db.execute(sql`DELETE FROM payments WHERE subscription_id = ${s.id} AND status <> 'approved'`);
-  await db.execute(sql`DELETE FROM washing_tasks WHERE subscription_id = ${s.id} AND status NOT IN ('completed','in_progress')`);
+  await db.execute(sql`DELETE FROM payments WHERE subscription_id = ${s.id}`);
+  await db.execute(sql`DELETE FROM wash_photos WHERE operation_id IN (SELECT id FROM washing_operations WHERE subscription_id = ${s.id})`);
+  await db.execute(sql`DELETE FROM washing_operations WHERE subscription_id = ${s.id}`);
+  await db.execute(sql`DELETE FROM washing_tasks WHERE subscription_id = ${s.id}`);
   await db.execute(sql`DELETE FROM subscription_reminders WHERE subscription_id = ${s.id}`);
   await db.execute(sql`DELETE FROM subscription_renewals WHERE new_subscription_id = ${s.id} OR previous_subscription_id = ${s.id}`);
   await db.execute(sql`DELETE FROM subscription_vehicles WHERE subscription_id = ${s.id}`);
-  await assertDeletable('subscription', req.params.id, [
-    { table: 'payments', column: 'subscription_id', label: 'approved payment(s)', where: "status = 'approved'" },
-    { table: 'washing_tasks', column: 'subscription_id', label: 'washing task(s)', where: "status IN ('completed','in_progress')" },
-    { table: 'subscriptions', column: 'renewed_from_id', label: 'renewal(s) that follow it' }
-  ]);
+  await db.execute(sql`UPDATE subscriptions SET renewed_from_id = NULL WHERE renewed_from_id = ${s.id}`);
+  await assertDeletable('subscription', req.params.id, []);
   const row = await deleteRow('subscriptions', req.params.id, req.companyId);
   await audit(req, { action: 'subscription.delete', entityType: 'subscription', entityId: row.id });
   res.json({ ok: true });
