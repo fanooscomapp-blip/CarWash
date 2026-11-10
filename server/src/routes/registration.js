@@ -125,7 +125,7 @@ router.post('/', requirePermission('units.manage', 'vehicles.manage'), wrap(asyn
       const [row] = await t.insert(vehicles).values({
         companyId: req.companyId, vehicleCode, plateNumber: v.plateNumber, compoundId: compound.id, unitId: unit.id, ownerId: owner.id,
         brand: v.brand || null, model: v.model || null, color: v.color || null, vehicleType: v.vehicleType,
-        parkingLocation: v.parkingLocation || null, gpsLat: v.gpsLat ?? null, gpsLng: v.gpsLng ?? null, notes: v.notes || null,
+        parkingLocation: v.parkingLocation || null, gpsLat: v.gpsLat ?? null, gpsLng: v.gpsLng ?? null, gpsSource: v.gpsLat ? 'admin' : null, notes: v.notes || null,
       }).returning();
       await t.insert(qrCodes).values({ vehicleId: row.id, token: crypto.randomBytes(24).toString('base64url') });
       await audit(req, { action: 'vehicle.create', entityType: 'vehicle', entityId: row.id, after: row }, t);

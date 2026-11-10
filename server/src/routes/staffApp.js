@@ -26,6 +26,15 @@ const { users, washingTasks, washingOperations, washPhotos, subscriptions, compa
 const rows = (r) => r.rows || r;
 const upload = makeUploader('washes', { maxMb: 12 });
 const photosField = upload.array('photos', 8);
+/** Learn the car's location from the washer's phone: fill it when missing, refresh it when the stored one was also staff-captured
+ *  (or an owner-supplied one is clearly off – more than 150 m away). Never touches an admin-set position. */
+async function learnVehicleGps(t, vehicleId, lat, lng) {
+  if (!(lat && lng)) return;
+  const v = await t.query.vehicles.findFirst({ where: eq(schema.vehicles.id, vehicleId) });
+  if (!v) return;
+  const far = v.gpsLat && Math.hypot((v.gpsLat - lat) * 111000, (v.gpsLng - lng) * 96000) > 150;
+  if (!v.gpsLat || v.gpsSource === 'staff' || ((v.gpsSource === 'owner' || !v.gpsSource) && far)) await t.update(schema.vehicles).set({ gpsLat: lat, gpsLng: lng, gpsSource: 'staff', gpsUpdatedAt: new Date() }).where(eq(schema.vehicles.id, vehicleId));
+}
 const bizToday = async (companyId) => businessToday((await getSetting(companyId, 'general')).dayStartHour);
 const cleanup = (files) => (files || []).forEach((f) => fs.unlink(f.path, () => {}));
 
@@ -113,6 +122,7 @@ router.post('/tasks/:id/start', photosField, wrap(async (req, res) => {
       let opId = task.operation_id; const now = new Date();
       if (!opId) { const [op] = await t.insert(washingOperations).values({ companyId: req.companyId, taskId: task.id, vehicleId: task.vehicle_id, subscriptionId: (await t.query.washingTasks.findFirst({ where: eq(washingTasks.id, task.id) })).subscriptionId, staffId: req.user.id, startTime: now, startLat: lat ?? null, startLng: lng ?? null, status: 'in_progress' }).returning({ id: washingOperations.id }); opId = op.id; }
       const ids = await savePhotos(t, opId, 'before', req.files || [], now);
+      await learnVehicleGps(t, task.vehicle_id, lat, lng);
       await t.update(washingTasks).set({ status: 'in_progress', updatedAt: now }).where(eq(washingTasks.id, task.id));
       await audit(req, { action: 'wash.start', entityType: 'washing_operation', entityId: opId, after: { taskId: task.id, photos: ids.length } }, t);
       return { operationId: opId, photoIds: ids, startTime: task.start_time || now };

@@ -105,6 +105,7 @@ router.put('/:id', requirePermission('vehicles.manage'), wrap(async (req, res) =
     if (!unit) throw notFound('Unit');
     patch.compoundId = unit.compoundId; patch.ownerId = unit.ownerId;
   }
+  if (patch.gpsLat !== undefined && (patch.gpsLat !== before.gpsLat || patch.gpsLng !== before.gpsLng)) { patch.gpsSource = patch.gpsLat ? 'admin' : null; patch.gpsUpdatedAt = new Date(); }
   const [row] = await db.update(vehicles).set({ ...patch, updatedAt: new Date() }).where(eq(vehicles.id, before.id)).returning();
   await audit(req, { action: 'vehicle.update', entityType: 'vehicle', entityId: row.id, before, after: row });
   res.json(row);

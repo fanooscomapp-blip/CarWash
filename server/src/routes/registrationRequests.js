@@ -89,7 +89,7 @@ router.post('/:id/approve', requirePermission('payments.approve'), wrap(async (r
       const dup = await t.query.vehicles.findFirst({ where: and(eq(vehicles.companyId, req.companyId), eq(vehicles.plateNumber, v.plateNumber)) });
       if (dup) throw conflict(`Plate ${v.plateNumber} is already registered (${dup.vehicleCode}) – edit the request first`);
       const vehicleCode = await nextCode(req.companyId, 'vehicle', 'VH', t);
-      const [row] = await t.insert(vehicles).values({ companyId: req.companyId, vehicleCode, plateNumber: v.plateNumber, compoundId: compound.id, unitId: unit.id, ownerId: owner.id, brand: v.brand || null, model: v.model || null, color: v.color || null, vehicleType: v.vehicleType || 'sedan', parkingLocation: v.parkingLocation || null, gpsLat: v.gpsLat ?? null, gpsLng: v.gpsLng ?? null }).returning();
+      const [row] = await t.insert(vehicles).values({ companyId: req.companyId, vehicleCode, plateNumber: v.plateNumber, compoundId: compound.id, unitId: unit.id, ownerId: owner.id, brand: v.brand || null, model: v.model || null, color: v.color || null, vehicleType: v.vehicleType || 'sedan', parkingLocation: v.parkingLocation || null, gpsLat: v.gpsLat ?? null, gpsLng: v.gpsLng ?? null, gpsSource: v.gpsLat ? 'owner' : null }).returning();
       await t.insert(qrCodes).values({ vehicleId: row.id, token: crypto.randomBytes(24).toString('base64url') });
       await audit(req, { action: 'vehicle.create', entityType: 'vehicle', entityId: row.id, after: row }, t);
       vehicleIds.push(row.id);

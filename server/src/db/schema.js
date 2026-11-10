@@ -156,6 +156,8 @@ export const vehicles = pgTable('vehicles', {
   parkingLocation: varchar('parking_location', { length: 200 }), // e.g. "Garage B, level -1, bay 23"
   gpsLat: doublePrecision('gps_lat'),
   gpsLng: doublePrecision('gps_lng'),
+  gpsSource: varchar('gps_source', { length: 10 }), // owner|admin|staff (staff = captured by the washer's phone at the car)
+  gpsUpdatedAt: ts('gps_updated_at'),
   notes: text('notes'),
   status: varchar('status', { length: 20 }).default('active').notNull(), // active | inactive
   isDemo: boolean('is_demo').default(false).notNull(),

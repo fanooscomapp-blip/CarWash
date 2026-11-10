@@ -50,6 +50,13 @@
       "when": 1794330000000,
       "tag": "0006_staff_schedule",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794340000000,
+      "tag": "0007_vehicle_gps_source",
+      "breakpoints": true
     }
   ]
 }
