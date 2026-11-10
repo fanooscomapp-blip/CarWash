@@ -163,15 +163,15 @@ export async function renewSubscription(req, previousId, input) {
     if (existing) throw conflict(`This subscription was already renewed as ${existing.subscriptionCode}`, { subscriptionId: existing.id });
 
     const startDate = input.startDate || (prev.endDate >= today() ? addDays(prev.endDate, 1) : today());
-    const { subscription, payment } = await createSubscription(req, {
-      unitId: prev.unitId, compoundId: prev.compoundId,
-      vehicleIds: input.vehicleIds?.length ? input.vehicleIds : prev.vehicles.map((v) => v.vehicleId),
-      planId: input.planId || prev.planId, startDate,
-      durationDays: input.durationDays, washesAllowed: input.washesAllowed, allowedDays: input.allowedDays,
-      price: input.price, discount: input.discount, paymentMethod: input.paymentMethod, paymentStatus: input.paymentStatus,
-      notes: input.notes, renewedFromId: prev.id,
-    }, t);
-
+    const vehicleIds = input.vehicleIds?.length ? input.vehicleIds : prev.vehicles.map((v) => v.vehicleId);
+    const planId = input.planId || prev.planId;
+    const plan = await t.query.subscriptionPlans.findFirst({ where: eq(subscriptionPlans.id, planId) });
+    const base = { unitId: prev.unitId, compoundId: prev.compoundId, planId, startDate, durationDays: input.durationDays, washesAllowed: input.washesAllowed, allowedDays: input.allowedDays, price: input.price, discount: input.discount, paymentMethod: input.paymentMethod, paymentStatus: input.paymentStatus, notes: input.notes };
+    // Switching a multi-car subscription to a per-car plan → one new subscription per car (the first one is the renewal)
+    const split = plan?.scope === 'per_vehicle' && vehicleIds.length > 1;
+    const { subscription, payment } = await createSubscription(req, { ...base, vehicleIds: split ? [vehicleIds[0]] : vehicleIds, renewedFromId: prev.id }, t);
+    const extra = [];
+    if (split) for (const vid of vehicleIds.slice(1)) extra.push(await createSubscription(req, { ...base, vehicleIds: [vid], allowedDays: undefined, notes: `${input.notes || ''} (split from ${prev.subscriptionCode})`.trim() }, t));
     const renewalCode = await nextCode(req.companyId, 'renewal', 'REN', t);
     const [renewal] = await t.insert(subscriptionRenewals).values({
       companyId: req.companyId, renewalCode, previousSubscriptionId: prev.id, newSubscriptionId: subscription.id,
@@ -180,7 +180,7 @@ export async function renewSubscription(req, previousId, input) {
     }).returning();
     await t.update(payments).set({ renewalId: renewal.id }).where(eq(payments.id, payment.id));
     await audit(req, { action: 'subscription.renew', entityType: 'subscription', entityId: prev.id, after: { renewalId: renewal.id, newSubscriptionId: subscription.id } }, t);
-    return { subscription, payment, renewal };
+    return { subscription, payment, renewal, extra: extra.map((e) => e.subscription) };
   });
 }
 
