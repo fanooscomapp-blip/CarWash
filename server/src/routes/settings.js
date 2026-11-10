@@ -36,7 +36,7 @@ const sectionSchemas = {
   general: z.object({ expiringSoonDays: z.coerce.number().int().min(1).max(90), defaultWashingDays: z.array(z.number().int().min(0).max(6)).min(1), weekStartsOn: z.number().int().min(0).max(6), dayStartHour: z.coerce.number().int().min(0).max(12).optional().default(6) }),
   bank: z.object({ bankName: z.string().max(200), accountName: z.string().max(200), accountNumber: z.string().max(60), iban: z.string().max(60), instructions: z.string().max(2000) }),
   payment: z.object({ method: z.enum(['instapay', 'bank', 'cash_only']), instapayAddress: z.string().max(120), instapayName: z.string().max(120), instapayLink: z.string().max(300).optional().default(''), instructions: z.string().max(1000), instructionsAr: z.string().max(1000) }),
-  sms: z.object({ provider: z.enum(['none', 'smsmisr', 'generic']), username: z.string().max(200).optional().default(''), password: z.string().max(200).optional().default(''), senderId: z.string().max(200).optional().default(''), environment: z.enum(['live', 'test']).optional().default('live'), apiUrl: z.string().max(500).optional().default(''), apiKey: z.string().max(500).optional().default(''), defaultLang: z.enum(['ar', 'en']).optional().default('ar') }),
+  sms: z.object({ provider: z.enum(['none', 'smsmisr', 'generic']), username: z.string().max(200).optional().default(''), password: z.string().max(200).optional().default(''), senderId: z.string().max(200).optional().default(''), environment: z.enum(['live', 'test']).optional().default('live'), apiUrl: z.string().max(500).optional().default(''), apiKey: z.string().max(500).optional().default(''), defaultLang: z.enum(['ar', 'en']).optional().default('ar'), otpTemplate: z.string().max(200).optional().default(''), otpApiUrl: z.string().max(500).optional().default('') }),
   portal: z.object({ baseUrl: z.string().max(300), sessionDays: z.coerce.number().int().min(1).max(365), linkValidDays: z.coerce.number().int().min(1).max(365), selfRegistration: z.boolean().optional().default(true), joinMaxPerHour: z.coerce.number().int().min(1).max(100).optional().default(5) }),
   otp: z.object({ length: z.coerce.number().int().min(4).max(8), expiryMinutes: z.coerce.number().int().min(1).max(60), maxAttempts: z.coerce.number().int().min(1).max(20), resendCooldownSeconds: z.coerce.number().int().min(10).max(600), maxPerDay: z.coerce.number().int().min(1).max(50).optional().default(5) }),
   photos: z.object({ minBeforePhotos: z.coerce.number().int().min(1).max(10), minAfterPhotos: z.coerce.number().int().min(1).max(10), maxPhotoSizeMb: z.coerce.number().int().min(1).max(50) }),
@@ -48,10 +48,13 @@ const sectionSchemas = {
 
 // Send a real test message through the configured provider (nothing is simulated)
 router.post('/sms/test', requirePermission('settings.manage'), wrap(async (req, res) => {
-  const { mobile, message } = z.object({ mobile: z.string().min(6), message: z.string().max(300).optional() }).parse(req.body);
+  const { mobile, message, otp } = z.object({ mobile: z.string().min(6), message: z.string().max(300).optional(), otp: z.boolean().optional() }).parse(req.body);
   const cfg = await getSetting(req.companyId, 'sms');
   const body = message || (cfg.defaultLang === 'ar' ? 'رسالة تجريبية من نظام غسيل السيارات' : 'Test message from Car Wash Management');
-  const log = await sendSms(req.companyId, { to: normalizeMobile(mobile), body, lang: cfg.defaultLang });
+  // otp:true exercises the real OTP path (SMS Misr OTP template when configured) with a random code
+  const log = otp
+    ? await sendSms(req.companyId, { to: normalizeMobile(mobile), templateKey: 'otp', vars: { Code: String(Math.floor(100000 + Math.random() * 900000)), Minutes: 5 }, lang: cfg.defaultLang })
+    : await sendSms(req.companyId, { to: normalizeMobile(mobile), body, lang: cfg.defaultLang });
   await audit(req, { action: 'settings.sms_test', entityType: 'settings', after: { to: log.toMobile, status: log.status } });
   res.json(log);
 }));

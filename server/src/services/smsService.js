@@ -23,6 +23,23 @@ const SMSMISR_CODES = {
   1901: 'Success', 1902: 'Invalid request', 1903: 'Invalid username or password', 1904: 'Invalid sender', 1905: 'Invalid mobile number',
   1906: 'Insufficient credit', 1907: 'Server under updating', 1908: 'Invalid date & time format for DelayUntil', 1909: 'Invalid message', 1910: 'Invalid language', 1911: 'Text is too long', 1912: 'Invalid environment',
 };
+// SMS Misr OTP API: the verification text itself is a template pre-approved in the SMS Misr portal (Templates → OTP),
+// identified by a token; we only send the code. Needed because the plain SMS gateway rejects free-text OTP messages.
+const SMSMISR_OTP_CODES = {
+  4901: 'Success', 4903: 'Invalid username or password', 4904: 'Invalid sender', 4905: 'Invalid mobile number', 4906: 'Insufficient credit',
+  4907: 'Server under updating', 4908: 'Invalid OTP', 4909: 'Invalid template token', 4912: 'Invalid environment',
+};
+async function sendOtpViaSmsMisr(cfg, { to, code }) {
+  const base = (cfg.otpApiUrl || 'https://smsmisr.com/api/OTP/').replace(/\/?$/, '/');
+  const params = new URLSearchParams({ environment: cfg.environment === 'test' ? '2' : '1', username: cfg.username, password: cfg.password, sender: cfg.senderId, mobile: to.replace(/^\+/, ''), template: cfg.otpTemplate, otp: String(code) });
+  const res = await fetch(`${base}?${params.toString()}`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString(), signal: AbortSignal.timeout(15000) });
+  const text = await res.text();
+  let json; try { json = JSON.parse(text); } catch { json = { raw: text }; }
+  const rc = String(json.code ?? json.Code ?? '');
+  const ok = rc === '4901' || rc === '1901';
+  return { ok, providerId: json.SMSID || json.smsid || null, response: { httpStatus: res.status, ...json, codeMeaning: SMSMISR_OTP_CODES[rc] || SMSMISR_CODES[rc] || undefined, via: 'smsmisr-otp', template: cfg.otpTemplate } };
+}
+
 async function sendViaSmsMisr(cfg, { to, body, lang }) {
   const base = (cfg.apiUrl || 'https://smsmisr.com/api/SMS/').replace(/\/?$/, '/');
   // 1 English, 2 Arabic, 3 Unicode – decided from the actual text, not the UI language
@@ -76,12 +93,14 @@ export async function sendSms(companyId, { to, templateKey, vars = {}, body, lan
     const [row] = await db.update(smsLogs).set({ status: 'not_configured', providerResponse: { reason: 'SMS provider not configured in Settings → SMS' } }).where(eq(smsLogs.id, log.id)).returning();
     return row;
   }
+  const useOtpApi = !!(templateKey === 'otp' && cfg.provider === 'smsmisr' && cfg.otpTemplate && vars?.Code);
   try {
-    const result = cfg.provider === 'smsmisr' ? await sendViaSmsMisr(cfg, { to: mobile, body: text, lang: language }) : await sendViaGeneric(cfg, { to: mobile, body: text });
+    const result = useOtpApi ? await sendOtpViaSmsMisr(cfg, { to: mobile, code: vars.Code })
+      : cfg.provider === 'smsmisr' ? await sendViaSmsMisr(cfg, { to: mobile, body: text, lang: language }) : await sendViaGeneric(cfg, { to: mobile, body: text });
     const [row] = await db.update(smsLogs).set({ status: result.ok ? 'sent' : 'failed', sentAt: result.ok ? new Date() : null, providerResponse: { ...result.response, providerId: result.providerId } }).where(eq(smsLogs.id, log.id)).returning();
     return row;
   } catch (e) {
-    const [row] = await db.update(smsLogs).set({ status: 'failed', providerResponse: { error: e.message } }).where(eq(smsLogs.id, log.id)).returning();
+    const [row] = await db.update(smsLogs).set({ status: 'failed', providerResponse: { error: e.message, ...(useOtpApi ? { via: 'smsmisr-otp' } : {}) } }).where(eq(smsLogs.id, log.id)).returning();
     return row;
   }
 }

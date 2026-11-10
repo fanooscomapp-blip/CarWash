@@ -24,7 +24,7 @@ export default function SettingsPage() {
   const [s, setS] = useState(null); const [company, setCompanyForm] = useState(null); const [busy, setBusy] = useState({});
   const [pw, setPw] = useState({ currentPassword: '', newPassword: '' });
   const [testMobile, setTestMobile] = useState(''); const [testBusy, setTestBusy] = useState(false); const [testResult, setTestResult] = useState(null);
-  const sendTest = async () => { setTestBusy(true); setTestResult(null); try { const { data: d } = await api.post('/admin/settings/sms/test', { mobile: testMobile }); setTestResult(d); } catch (e) { toast.error(e.message); } finally { setTestBusy(false); } };
+  const sendTest = async (otp = false) => { setTestBusy(true); setTestResult(null); try { const { data: d } = await api.post('/admin/settings/sms/test', { mobile: testMobile, otp }); setTestResult(d); } catch (e) { toast.error(e.message); } finally { setTestBusy(false); } };
   useEffect(() => { if (data) { setS(data.settings); setCompanyForm(data.company); } }, [data]);
   if (error) return <ErrorBox error={error} onRetry={reload} />;
   if (!s || !company) return <Loading />;
@@ -72,7 +72,7 @@ export default function SettingsPage() {
         </>}
       </Section>
 
-      <Section title={t('settings.sms')} busy={busy.sms} onSave={() => save('sms', { provider: s.sms.provider, username: s.sms.username, password: s.sms.password, senderId: s.sms.senderId, environment: s.sms.environment, apiUrl: s.sms.apiUrl, apiKey: s.sms.apiKey, defaultLang: s.sms.defaultLang }, (d) => upd('sms', d))}>
+      <Section title={t('settings.sms')} busy={busy.sms} onSave={() => save('sms', { provider: s.sms.provider, username: s.sms.username, password: s.sms.password, senderId: s.sms.senderId, environment: s.sms.environment, apiUrl: s.sms.apiUrl, apiKey: s.sms.apiKey, defaultLang: s.sms.defaultLang, otpTemplate: s.sms.otpTemplate || '' }, (d) => upd('sms', d))}>
         <div className={`sm:col-span-2 flex items-start gap-2 rounded-lg px-3 py-2 text-sm ${s.sms.configured ? 'bg-emerald-50 text-emerald-700' : 'bg-orange-50 text-orange-700'}`}>{s.sms.configured ? <CheckCircle2 size={16} className="mt-0.5" /> : <AlertTriangle size={16} className="mt-0.5" />}{s.sms.configured ? t('settings.smsConfigured') : t('settings.smsNotConfigured')}</div>
         <Field label={t('settings.smsProvider')}><Select value={s.sms.provider} onChange={(e) => upd('sms', { provider: e.target.value })}><option value="none">{t('common.none')}</option><option value="smsmisr">SMS Misr</option><option value="generic">{t('settings.smsGeneric')}</option></Select></Field>
         <Field label={t('settings.smsLang')}><Select value={s.sms.defaultLang} onChange={(e) => upd('sms', { defaultLang: e.target.value })}><option value="ar">العربية</option><option value="en">English</option></Select></Field>
@@ -81,6 +81,7 @@ export default function SettingsPage() {
           <Field label="Password / Token"><Input dir="ltr" type="password" autoComplete="new-password" value={s.sms.password} onChange={(e) => upd('sms', { password: e.target.value })} /></Field>
           <Field label="Sender ID" hint={t('settings.senderHint')} ><Input dir="ltr" value={s.sms.senderId} onChange={(e) => upd('sms', { senderId: e.target.value })} /></Field>
           <Field label={t('settings.smsEnv')}><Select value={s.sms.environment} onChange={(e) => upd('sms', { environment: e.target.value })}><option value="live">Live</option><option value="test">Test</option></Select></Field>
+          <Field label={t('settings.otpTemplate')} hint={t('settings.otpTemplateHint')} className="sm:col-span-2"><Input dir="ltr" autoComplete="off" value={s.sms.otpTemplate || ''} onChange={(e) => upd('sms', { otpTemplate: e.target.value })} placeholder="e.g. 1a2b3c4d-....." /></Field>
         </>}
         {s.sms.provider === 'generic' && <>
           <Field label={t('settings.smsApiUrl')}><Input dir="ltr" value={s.sms.apiUrl} onChange={(e) => upd('sms', { apiUrl: e.target.value })} /></Field>
@@ -89,7 +90,8 @@ export default function SettingsPage() {
         </>}
         <div className="sm:col-span-2 flex flex-wrap items-end gap-2 rounded-lg border border-dashed border-slate-300 p-3">
           <Field label={t('settings.smsTestTo')} className="flex-1 min-w-48"><Input dir="ltr" value={testMobile} onChange={(e) => setTestMobile(e.target.value)} placeholder="01xxxxxxxxx" /></Field>
-          <button type="button" className="btn-secondary" disabled={!testMobile || testBusy} onClick={sendTest}>{testBusy ? <Spinner /> : <Send size={14} />}{t('settings.smsTest')}</button>
+          <button type="button" className="btn-secondary" disabled={!testMobile || testBusy} onClick={() => sendTest(false)}>{testBusy ? <Spinner /> : <Send size={14} />}{t('settings.smsTest')}</button>
+          <button type="button" className="btn-secondary" disabled={!testMobile || testBusy} onClick={() => sendTest(true)}>{testBusy ? <Spinner /> : <Send size={14} />}{t('settings.smsTestOtp')}</button>
           {testResult && <p className={`basis-full text-sm ${testResult.status === 'sent' ? 'text-emerald-700' : 'text-red-600'}`}>{t(`sms.status_${testResult.status}`)}{testResult.providerResponse?.codeMeaning ? ` — ${testResult.providerResponse.codeMeaning}` : testResult.providerResponse?.error ? ` — ${testResult.providerResponse.error}` : testResult.providerResponse?.reason ? ` — ${testResult.providerResponse.reason}` : ''}</p>}
         </div>
         <p className="sm:col-span-2 text-xs text-slate-500">{t('settings.smsTestHint')}</p>

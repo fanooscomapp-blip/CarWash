@@ -30,6 +30,11 @@ fs.writeFileSync('/tmp/receipt.png', Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAA
   await j('PUT', '/admin/settings/sms', { provider: 'smsmisr', username: 'demo', password: 'demo', senderId: 'CARWASH', environment: 'test', defaultLang: 'ar' }, admin);
   const t2 = await j('POST', '/admin/settings/sms/test', { mobile: '01099900001' }, admin);
   assert.ok(['failed', 'sent'].includes(t2.status)); step(`SMS Misr adapter attempted a real call → ${t2.status} (${JSON.stringify(t2.providerResponse).slice(0, 80)}…)`);
+  // OTP template token → OTP API path (template + code, no free text); dummy creds so it fails at the provider, but via the OTP endpoint
+  await j('PUT', '/admin/settings/sms', { provider: 'smsmisr', username: 'demo', password: 'demo', senderId: 'CARWASH', environment: 'test', defaultLang: 'ar', otpTemplate: 'dummy-template-token' }, admin);
+  const t3 = await j('POST', '/admin/settings/sms/test', { mobile: '01099900001', otp: true }, admin);
+  assert.ok(['failed', 'sent'].includes(t3.status)); assert.equal(t3.providerResponse?.via, 'smsmisr-otp'); assert.equal(t3.templateKey, 'otp');
+  step(`OTP routed through SMS Misr OTP API → ${t3.status} (${t3.providerResponse?.codeMeaning || t3.providerResponse?.code || 'no code'})`);
   await j('PUT', '/admin/settings/sms', { provider: 'none' }, admin);
 
   // Scenario 8: expiring subscription (3 days) → reminder automation → link

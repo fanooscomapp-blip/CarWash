@@ -7,7 +7,7 @@ export const SETTING_DEFAULTS = {
   payment: { method: 'instapay', instapayAddress: '', instapayName: '', instapayLink: '', instructions: '', instructionsAr: '' },
   bank: { bankName: '', accountName: '', accountNumber: '', iban: '', instructions: '' },
   // SMS provider. provider: none | smsmisr | generic
-  sms: { provider: 'none', username: '', password: '', senderId: '', environment: 'live', apiUrl: '', apiKey: '', configured: false, defaultLang: 'ar' },
+  sms: { provider: 'none', username: '', password: '', senderId: '', environment: 'live', apiUrl: '', apiKey: '', configured: false, defaultLang: 'ar', otpTemplate: '', otpApiUrl: '' },
   portal: { baseUrl: '', sessionDays: 30, linkValidDays: 30, selfRegistration: true, joinMaxPerHour: 5 },
   otp: { length: 6, expiryMinutes: 5, maxAttempts: 5, resendCooldownSeconds: 60, maxPerDay: 5 },
   photos: { minBeforePhotos: 1, minAfterPhotos: 1, maxPhotoSizeMb: 8 },
