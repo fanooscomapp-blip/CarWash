@@ -73,7 +73,7 @@ async function renewalSummary(sub, lang) {
     company, owner: { name: owner.name, mobileMasked: owner.mobile.replace(/^(\+?\d{4})\d+(\d{3})$/, '$1•••••$2') },
     compound: unit.compound.name, unitNumber: unit.unitNumber, vehicles: vehicleRows,
     current: { id: fresh.id, code: fresh.subscriptionCode, planName: fresh.planSnapshot?.name, planNameAr: fresh.planSnapshot?.nameAr, startDate: fresh.startDate, endDate: fresh.endDate, status: fresh.status, washesAllowed: fresh.washesAllowed, washesUsed: fresh.washesUsed, daysRemaining: Math.round((new Date(fresh.endDate) - new Date(today())) / 86400000) },
-    plans: priced, payment: { method: payment.method, instapayAddress: payment.instapayAddress, instapayName: payment.instapayName, instructions: payment.instructions, instructionsAr: payment.instructionsAr },
+    plans: priced, payment: { method: payment.method, instapayAddress: payment.instapayAddress, instapayName: payment.instapayName, instapayLink: payment.instapayLink || '', instructions: payment.instructions, instructionsAr: payment.instructionsAr },
     request,
   };
 }
