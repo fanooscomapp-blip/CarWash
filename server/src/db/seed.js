@@ -115,7 +115,7 @@ async function seedDemo(company, admin, roleRows) {
     const vs = [];
     for (let k = 0; k < nVeh; k++) {
       const [brand, model] = rnd(brands, vIdx);
-      const [v] = await db.insert(schema.vehicles).values({ companyId: cid, vehicleCode: await nextCode(cid, 'vehicle', 'VH'), plateNumber: plate(vIdx), compoundId: compound.id, unitId: unit.id, ownerId: owner.id, brand, model, color: rnd(colors, vIdx), vehicleType: rnd(types, vIdx), registrationDate: addDays(today(), -120 + vIdx), isDemo: true }).returning();
+      const [v] = await db.insert(schema.vehicles).values({ companyId: cid, vehicleCode: await nextCode(cid, 'vehicle', 'VH'), plateNumber: plate(vIdx), compoundId: compound.id, unitId: unit.id, ownerId: owner.id, brand, model, parkingLocation: `Building ${unit.unitNumber.split('-')[0]} parking`, gpsLat: +(30.02 + (i % 3) * 0.05 + ((i * 7) % 5) * 0.0012 + (k ? 0.0001 : 0)).toFixed(6), gpsLng: +(31.45 + Math.floor(i / 3) * 0.003 + ((i * 11) % 4) * 0.0009).toFixed(6), color: rnd(colors, vIdx), vehicleType: rnd(types, vIdx), registrationDate: addDays(today(), -120 + vIdx), isDemo: true }).returning();
       await db.insert(schema.qrCodes).values({ vehicleId: v.id, token: crypto.randomBytes(24).toString('base64url') });
       vs.push(v); vIdx++;
     }

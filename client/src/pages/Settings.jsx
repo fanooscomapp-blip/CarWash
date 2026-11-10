@@ -125,6 +125,7 @@ export default function SettingsPage() {
         <div className="sm:col-span-2 flex flex-col gap-2 items-start">
           <Toggle checked={s.assignment.preferLastWasher} onChange={(v) => upd('assignment', { preferLastWasher: v })} label={t('settings.preferLastWasher')} />
           <Toggle checked={s.assignment.publishUnassignedToPool} onChange={(v) => upd('assignment', { publishUnassignedToPool: v })} label={t('settings.publishPool')} />
+          <Toggle checked={s.assignment.clusterByLocation !== false} onChange={(v) => upd('assignment', { clusterByLocation: v })} label={t('settings.clusterByLocation')} />
         </div>
       </Section>
 

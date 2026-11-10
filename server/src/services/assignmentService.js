@@ -12,6 +12,7 @@ import { getSetting } from './settingsService.js';
 import { nextCode, today, addDays, businessToday } from '../lib/util.js';
 import { systemAudit } from '../lib/audit.js';
 import { notifyAdmins } from './notificationService.js';
+import { clusterWithSizes, spread } from '../lib/geo.js';
 
 const { washingTasks, compounds, users, staffCompounds, staffLeaves, assignmentRuns } = schema;
 const rows = (r) => r.rows || r;
@@ -22,7 +23,7 @@ export async function eligibleVehicles(companyId, compoundId, date) {
   // Week window for frequency check: Saturday-based week (regional), compute start of week
   const wkStart = addDays(date, -((dow + 1) % 7));
   return rows(await db.execute(sql`
-    SELECT v.id AS vehicle_id, v.plate_number, s.id AS subscription_id, s.washes_allowed, s.washes_used, s.frequency_per_week,
+    SELECT v.id AS vehicle_id, v.plate_number, v.gps_lat::float AS lat, v.gps_lng::float AS lng, v.unit_id, s.id AS subscription_id, s.washes_allowed, s.washes_used, s.frequency_per_week,
       (SELECT t.assigned_to FROM washing_tasks t JOIN washing_operations o ON o.task_id = t.id
          WHERE t.vehicle_id = v.id AND o.status IN ('completed','approved') ORDER BY t.scheduled_date DESC LIMIT 1) AS last_staff_id,
       (SELECT count(*) FROM washing_tasks t WHERE t.vehicle_id = v.id AND t.scheduled_date BETWEEN ${wkStart} AND ${date} AND t.status <> 'cancelled')::int AS tasks_this_week
@@ -80,9 +81,35 @@ export async function distributeCompounds(companyId, compoundIds, date, { trigge
   const byC = compoundIds.map((c) => queue.filter((q) => q.compoundId === c)); const ordered = []; let i = 0;
   while (ordered.length < queue.length) { const list = byC[i % byC.length]; if (list.length) ordered.push(list.shift()); i++; }
   const ratio = (k) => load[k] / (capOf[k] === Infinity ? 1e6 : capOf[k]);
-  // 1) Greedy: least utilised candidate in that compound (load ÷ capacity), last washer wins ties
-  const plan = [];
+  // 0) Location clustering (optional): inside each compound, cars with GPS are grouped into one area per available
+  //    washer (group sizes proportional to capacity) so each washer gets cars that are next to each other.
+  const plan = []; const preassigned = new Set(); const clusterInfo = {};
+  if (cfg.clusterByLocation !== false) {
+    for (const compoundId of compoundIds) {
+      const team = staffByCompound[compoundId].filter((s) => load[K(s.id, compoundId)] < capOf[K(s.id, compoundId)]);
+      const withGps = queue.filter((q) => q.compoundId === compoundId && q.v.lat && q.v.lng);
+      if (team.length < 2 || withGps.length < team.length) continue;
+      const room = team.map((s) => (capOf[K(s.id, compoundId)] === Infinity ? 1e6 : capOf[K(s.id, compoundId)] - load[K(s.id, compoundId)]));
+      const totalRoom = room.reduce((a, b) => a + b, 0); const n = Math.min(withGps.length, totalRoom);
+      let sizes = room.map((r) => Math.min(r, Math.floor((n * r) / totalRoom))); let rest = n - sizes.reduce((a, b) => a + b, 0);
+      for (let i = 0; rest > 0 && i < 1000; i = (i + 1) % sizes.length) if (sizes[i] < room[i]) { sizes[i]++; rest--; }
+      const clusters = clusterWithSizes(withGps.map((q) => ({ lat: q.v.lat, lng: q.v.lng, q })), sizes);
+      // cluster → washer: prefer the washer who did most of these cars last time, then the one whose size fits best
+      const free = new Set(team.map((s) => s.id)); const mapping = [];
+      const scored = clusters.map((cl, ci) => ({ ci, cl, aff: team.map((s) => cl.filter((p) => p.q.v.last_staff_id === s.id).length) }));
+      scored.sort((a, b) => Math.max(...b.aff) - Math.max(...a.aff));
+      for (const sc of scored) {
+        let best = null, bestScore = -Infinity;
+        team.forEach((s, si) => { if (!free.has(s.id)) return; const score = sc.aff[si] * 1000 - Math.abs(sizes[si] - sc.cl.length); if (score > bestScore) { bestScore = score; best = s; } });
+        if (!best) continue; free.delete(best.id); mapping.push([sc, best]);
+      }
+      for (const [sc, s] of mapping) for (const p of sc.cl.slice(0, Math.max(0, capOf[K(s.id, compoundId)] - load[K(s.id, compoundId)]))) { plan.push({ compoundId, v: p.q.v, staffId: s.id }); load[K(s.id, compoundId)]++; preassigned.add(p.q.v.vehicle_id); }
+      clusterInfo[compoundId] = mapping.map(([sc, s]) => ({ staff: names[s.id], cars: sc.cl.length, spreadM: spread(sc.cl) }));
+    }
+  }
+  // 1) Greedy for the rest (no GPS, or clustering skipped): least utilised candidate, last washer wins ties
   for (const { compoundId, v } of ordered) {
+    if (preassigned.has(v.vehicle_id)) continue;
     const candidates = staffByCompound[compoundId].filter((s) => load[K(s.id, compoundId)] < capOf[K(s.id, compoundId)]);
     let pick = null;
     if (candidates.length) {
@@ -102,7 +129,7 @@ export async function distributeCompounds(companyId, compoundIds, date, { trigge
         const kh = K(heavy.id, compoundId), kl = K(light.id, compoundId);
         if (heavy.id === light.id || load[kl] >= capOf[kl]) continue;
         if (!(Math.max((load[kh] - 1) / capOf[kh], (load[kl] + 1) / capOf[kl]) < Math.max(ratio(kh), ratio(kl)) - 1e-9)) continue;
-        const task = plan.find((p) => p.compoundId === compoundId && p.staffId === heavy.id && p.v.last_staff_id !== heavy.id) || plan.find((p) => p.compoundId === compoundId && p.staffId === heavy.id);
+        const task = plan.find((p) => p.compoundId === compoundId && p.staffId === heavy.id && !preassigned.has(p.v.vehicle_id) && p.v.last_staff_id !== heavy.id) || plan.find((p) => p.compoundId === compoundId && p.staffId === heavy.id && !preassigned.has(p.v.vehicle_id));
         if (!task) continue;
         task.staffId = light.id; load[kh]--; load[kl]++; moved = true;
       }
@@ -115,6 +142,7 @@ export async function distributeCompounds(companyId, compoundIds, date, { trigge
       const sum = perCompound[compoundId];
       if (staffId) { sum.assigned++; sum.perStaff[names[staffId]] = (sum.perStaff[names[staffId]] || 0) + 1; } else sum.pooled++;
     }
+    for (const sum of Object.values(perCompound)) { if (clusterInfo[sum.compoundId]) sum.clusters = clusterInfo[sum.compoundId]; }
     for (const sum of Object.values(perCompound)) if (sum.eligible) await t.insert(assignmentRuns).values({ companyId, compoundId: sum.compoundId, forDate: date, trigger, summary: sum, createdBy });
   });
   for (const sum of Object.values(perCompound)) {

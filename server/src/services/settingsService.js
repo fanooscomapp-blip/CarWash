@@ -12,7 +12,7 @@ export const SETTING_DEFAULTS = {
   otp: { length: 6, expiryMinutes: 5, maxAttempts: 5, resendCooldownSeconds: 60, maxPerDay: 5 },
   photos: { minBeforePhotos: 1, minAfterPhotos: 1, maxPhotoSizeMb: 8 },
   // Daily distribution: run at `assignHour` (0-23, business TZ) for the next day; fairness: even split, prefer last washer
-  assignment: { enabled: true, assignHour: 20, preferLastWasher: true, maxPerStaffPerDay: 0, defaultCapacity: 32, publishUnassignedToPool: true },
+  assignment: { enabled: true, assignHour: 20, preferLastWasher: true, maxPerStaffPerDay: 0, defaultCapacity: 32, publishUnassignedToPool: true, clusterByLocation: true },
   // Outcomes staff can pick instead of washing (key, icon, counts against quota?)
   outcomes: [
     { key: 'not_found', icon: 'car-off', labelAr: 'السيارة غير موجودة', labelEn: 'Car not found', consumesQuota: false, requiresPhoto: false },

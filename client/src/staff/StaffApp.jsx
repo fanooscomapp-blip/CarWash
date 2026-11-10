@@ -18,6 +18,18 @@ const useQueue = () => useContext(QCtx);
 
 const dayName = (iso, lang) => new Intl.DateTimeFormat(lang === 'ar' ? 'ar-EG' : 'en-GB', { weekday: 'long' }).format(new Date(iso + 'T12:00:00'));
 const shortDate = (iso, lang) => new Intl.DateTimeFormat(lang === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { day: 'numeric', month: 'numeric' }).format(new Date(iso + 'T12:00:00'));
+const distM = (a, b) => { const R = 6371000, r = (d) => (d * Math.PI) / 180; const dLat = r(b.lat - a.lat), dLng = r(b.lng - a.lng); const h = Math.sin(dLat / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(dLng / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(h)); };
+/** Open tasks first in a short walking order (nearest next), done ones after; cars without GPS keep their order at the end of the open group. */
+function routeSort(list) {
+  const open = list.filter((x) => !['completed', 'skipped'].includes(x.status)), done = list.filter((x) => ['completed', 'skipped'].includes(x.status));
+  const gps = open.filter((x) => x.gps_lat && x.gps_lng).map((x) => ({ ...x, lat: Number(x.gps_lat), lng: Number(x.gps_lng) })), noGps = open.filter((x) => !(x.gps_lat && x.gps_lng));
+  if (gps.length < 3) return [...gps, ...noGps, ...done];
+  const c = { lat: gps.reduce((a, p) => a + p.lat, 0) / gps.length, lng: gps.reduce((a, p) => a + p.lng, 0) / gps.length };
+  const rem = gps.slice(); const out = []; let cur = rem.reduce((b, p) => (distM(p, c) < distM(b, c) ? p : b), rem[0]);
+  while (rem.length) { let bi = 0, bd = Infinity; rem.forEach((p, i) => { const d = distM(cur, p); if (d < bd) { bd = d; bi = i; } }); cur = rem.splice(bi, 1)[0]; out.push(cur); }
+  return [...out, ...noGps, ...done];
+}
+const routeLink = (list) => { const pts = list.filter((x) => !['completed', 'skipped'].includes(x.status) && x.gps_lat && x.gps_lng).slice(0, 10); return pts.length >= 2 ? `https://www.google.com/maps/dir/${pts.map((p) => `${p.gps_lat},${p.gps_lng}`).join('/')}` : null; };
 const OUTCOME_ICON = { 'car-off': CarFront, lock: Lock, alert: AlertTriangle, calendar: CalendarClock };
 
 // ───────── Login ─────────
@@ -105,7 +117,8 @@ function HomePage() {
   useEffect(() => { if (q.pending === 0) load(); }, [q.pending, load]);
   const date = day === 'today' ? data?.today : data?.tomorrow;
   const list = (data?.tasks || []).filter((x) => x.date === date);
-  const mine = list.filter((x) => x.assigned_to), pool = list.filter((x) => !x.assigned_to);
+  const mine = routeSort(list.filter((x) => x.assigned_to)), pool = list.filter((x) => !x.assigned_to);
+  const route = day === 'today' ? routeLink(mine) : null;
   const doneCount = mine.filter((x) => ['completed', 'skipped'].includes((q.local[x.id] || x).status)).length;
   const count = (d) => (data?.tasks || []).filter((x) => x.date === d && x.assigned_to).length;
   return (
@@ -113,6 +126,7 @@ function HomePage() {
       <div className="grid grid-cols-2 gap-2 mb-3 rounded-2xl bg-white p-1.5 shadow-sm">
         {[['today', data?.today], ['tomorrow', data?.tomorrow]].map(([k, d]) => <button key={k} onClick={() => setDay(k)} className={`rounded-xl py-2.5 text-lg font-bold flex flex-col items-center justify-center leading-tight ${day === k ? 'bg-navy-900 text-white' : 'text-slate-600'}`}><span className="flex items-center gap-2">{d ? dayName(d, lang) : t(k)}<span className={`rounded-full px-2 text-sm ${day === k ? 'bg-white/20' : 'bg-slate-100'}`}>{count(d)}</span></span><span className={`text-xs font-medium ${day === k ? 'text-white/70' : 'text-slate-400'}`}>{d ? `${t(k)} · ${shortDate(d, lang)}` : ''}</span></button>)}
       </div>
+      {route && <a href={route} target="_blank" rel="noreferrer" className="mb-3 flex items-center justify-center gap-2 rounded-2xl bg-brand-600 text-white py-3 text-base font-bold shadow-sm"><MapPin size={20} />{t('route')}</a>}
       {day === 'today' && mine.length > 0 && <div className="mb-3 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-sm"><div className="flex-1 h-3 rounded-full bg-slate-100 overflow-hidden"><div className="h-full bg-emerald-500 transition-all" style={{ width: `${(doneCount / mine.length) * 100}%` }} /></div><span className="text-sm font-bold text-slate-700">{doneCount}/{mine.length} {t('done')}</span></div>}
       {day === 'tomorrow' && <p className="mb-3 rounded-2xl bg-amber-50 border border-amber-200 px-4 py-2 text-sm text-amber-800">{t('tomorrowView')}{data?.tomorrow ? ` — ${dayName(data.tomorrow, lang)}` : ''}</p>}
       {err && !data && <p className="text-center text-red-600 py-8">{t('error')}</p>}
