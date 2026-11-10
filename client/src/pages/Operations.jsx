@@ -130,7 +130,7 @@ export default function Operations() {
   const lookups = useLookups();
   const { data, loading, error, reload } = useQuery('/admin/staff/board', { date: date || undefined, compoundId });
   const shownDate = date || data?.today || todayISO();
-  const [detail, setDetail] = useState(null); const [dragging, setDragging] = useState(null); const [cancel, setCancel] = useState(null); const [cancelBusy, setCancelBusy] = useState(false); const [adding, setAdding] = useState(false); const [distBusy, setDistBusy] = useState(false); const [showLoad, setShowLoad] = useState(false);
+  const [detail, setDetail] = useState(params.get('task') || null); const [dragging, setDragging] = useState(null); const [cancel, setCancel] = useState(null); const [cancelBusy, setCancelBusy] = useState(false); const [adding, setAdding] = useState(false); const [distBusy, setDistBusy] = useState(false); const [showLoad, setShowLoad] = useState(false);
   const canManage = can('operations.manage');
   const today = data?.today || todayISO(), tomorrow = addDaysISO(today, 1);
   const outcomes = useQuery('/admin/settings', {}, { enabled: can('settings.manage') });

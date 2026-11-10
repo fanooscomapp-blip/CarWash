@@ -75,6 +75,21 @@ function Notifications() {
   useEffect(() => { load(); const id = setInterval(load, 60000); return () => clearInterval(id); }, []);
   useEffect(() => { const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }; document.addEventListener('mousedown', onDoc); return () => document.removeEventListener('mousedown', onDoc); }, []);
   const markAll = async () => { const ids = data.data.filter((n) => !n.isRead).map((n) => n.id); if (ids.length) { await api.post('/admin/notifications/read', { ids }); load(); } };
+  const navigate = useNavigate();
+  // Where a notification leads: the entity it is about
+  const target = (n) => {
+    const t = n.entityType, id = n.entityId, m = /(\d{4}-\d{2}-\d{2})/.exec(n.title || '');
+    if (t === 'subscription' && id) return `/subscriptions/${id}`;
+    if (t === 'payment') return '/payments?status=pending_verification';
+    if (t === 'registration_request') return '/registration-requests';
+    if (t === 'washing_task' && id) return `/operations?task=${id}`;
+    if (t === 'compound') return `/operations?${id ? `compoundId=${id}&` : ''}${m ? `date=${m[1]}` : ''}`;
+    if (t === 'owner' && id) return `/owners/${id}`;
+    if (t === 'vehicle' && id) return `/vehicles/${id}`;
+    if (t === 'user') return '/staff';
+    return null;
+  };
+  const openOne = async (n) => { if (!n.isRead) { api.post('/admin/notifications/read', { ids: [n.id] }).then(load).catch(() => {}); } setOpen(false); const to = target(n); if (to) navigate(to); };
   return (
     <div className="relative" ref={ref}>
       <button onClick={() => setOpen((o) => !o)} className="relative btn-ghost p-2 rounded-lg"><Bell size={18} />{data.unread > 0 && <span className="absolute -top-0.5 -end-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white">{data.unread}</span>}</button>
@@ -83,7 +98,7 @@ function Notifications() {
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200"><p className="text-sm font-semibold">{t('notifications.title')}</p>{data.unread > 0 && <button onClick={markAll} className="text-xs text-brand-600 hover:underline">{t('notifications.markAll')}</button>}</div>
           <div className="max-h-80 overflow-y-auto">
             {!data.data.length ? <p className="p-6 text-center text-sm text-slate-500">{t('notifications.empty')}</p>
-              : data.data.map((n) => <div key={n.id} className={`px-4 py-3 border-b border-slate-100 text-sm ${n.isRead ? '' : 'bg-brand-50/60'}`}><p className="font-medium text-slate-800">{n.title}</p>{n.body && <p className="text-slate-500 text-xs mt-0.5">{n.body}</p>}<p className="text-[11px] text-slate-400 mt-1">{fmtDateTime(n.createdAt, lang)}</p></div>)}
+              : data.data.map((n) => <div key={n.id} role="button" tabIndex={0} onClick={() => openOne(n)} onKeyDown={(e) => e.key === 'Enter' && openOne(n)} className={`px-4 py-3 border-b border-slate-100 text-sm cursor-pointer hover:bg-slate-50 ${n.isRead ? '' : 'bg-brand-50/60'}`}><p className="font-medium text-slate-800">{n.title}</p>{n.body && <p className="text-slate-500 text-xs mt-0.5">{n.body}</p>}<p className="text-[11px] text-slate-400 mt-1">{fmtDateTime(n.createdAt, lang)}</p></div>)}
           </div>
         </div>
       )}

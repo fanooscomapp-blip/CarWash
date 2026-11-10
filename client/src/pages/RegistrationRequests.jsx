@@ -69,7 +69,7 @@ function ReviewModal({ id, onClose, onChanged }) {
 }
 
 export default function RegistrationRequests() {
-  const { t, lang } = useI18n(); const { company } = useAuth(); const lookups = useLookups(); const toast = useToast();
+  const { t, lang } = useI18n(); const { company, can } = useAuth(); const lookups = useLookups(); const toast = useToast();
   const [status, setStatus] = useState('pending'); const [compoundId, setCompoundId] = useState(''); const [page, setPage] = useState(1); const [open, setOpen] = useState(null);
   const { data, loading, error, reload } = useQuery('/admin/registration-requests', { status, compoundId, page, pageSize: 20 });
   const cur = company?.currency || 'EGP';
