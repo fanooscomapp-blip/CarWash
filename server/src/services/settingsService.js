@@ -9,7 +9,7 @@ export const SETTING_DEFAULTS = {
   // SMS provider. provider: none | smsmisr | generic
   sms: { provider: 'none', username: '', password: '', senderId: '', environment: 'live', apiUrl: '', apiKey: '', configured: false, defaultLang: 'ar' },
   portal: { baseUrl: '', sessionDays: 30, linkValidDays: 30, selfRegistration: true, joinMaxPerHour: 5 },
-  otp: { length: 6, expiryMinutes: 5, maxAttempts: 5, resendCooldownSeconds: 60 },
+  otp: { length: 6, expiryMinutes: 5, maxAttempts: 5, resendCooldownSeconds: 60, maxPerDay: 5 },
   photos: { minBeforePhotos: 1, minAfterPhotos: 1, maxPhotoSizeMb: 8 },
   // Daily distribution: run at `assignHour` (0-23, business TZ) for the next day; fairness: even split, prefer last washer
   assignment: { enabled: true, assignHour: 20, preferLastWasher: true, maxPerStaffPerDay: 0, defaultCapacity: 32, publishUnassignedToPool: true },
@@ -20,7 +20,7 @@ export const SETTING_DEFAULTS = {
     { key: 'damage', icon: 'alert', labelAr: 'ضرر أو مشكلة بالسيارة', labelEn: 'Damage or issue', consumesQuota: false, requiresPhoto: true },
     { key: 'postponed', icon: 'calendar', labelAr: 'تأجيل لبكرة', labelEn: 'Postpone to tomorrow', consumesQuota: false, requiresPhoto: false },
   ],
-  notifications: { expiryReminderDays: [3], sendOnExpiry: true, postExpiryReminderDays: [], notifyAdminOnPendingPayment: true, notifyAdminOnIssue: true, smsOnPaymentApproved: true, smsOnPaymentRejected: true, smsOnWashCompleted: false },
+  notifications: { expiryReminderDays: [3], sendOnExpiry: true, postExpiryReminderDays: [], notifyAdminOnPendingPayment: true, notifyAdminOnIssue: true, smsOnPaymentApproved: true, smsOnPaymentRejected: true, smsOnWashCompleted: false, smsOnRenewalReceived: true, smsOnRegistrationApproved: true, reminderHour: 10 },
   paymentMethods: ['bank_transfer', 'cash', 'other'],
 };
 

@@ -12,6 +12,7 @@ import { mobileCandidates, normalizeMobile } from '../lib/mobile.js';
 import { sendStored } from '../lib/storage.js';
 import { createSubscription } from '../services/subscriptionService.js';
 import { sendSms } from '../services/smsService.js';
+import { getSetting } from '../services/settingsService.js';
 import { ensureRenewalToken, portalBaseUrl } from '../services/renewalLinkService.js';
 import { BODY_TYPES } from '../lib/vehicleCatalog.js';
 
@@ -104,7 +105,7 @@ router.post('/:id/approve', requirePermission('payments.approve'), wrap(async (r
     const base = await portalBaseUrl(req.companyId);
     const link = `${base}/p/login`;
     const [y, m, d] = String(result.subscription.endDate).split('-');
-    await sendSms(req.companyId, { to: result.owner.mobile, ownerId: result.owner.id, templateKey: 'registration_approved', vars: { OwnerName: result.owner.name, VehicleNumber: result.plates, ExpiryDate: `${d}/${m}/${y}`, PlanName: result.subscription.planSnapshot?.name, RenewalLink: link } });
+    if ((await getSetting(req.companyId, 'notifications')).smsOnRegistrationApproved !== false) await sendSms(req.companyId, { to: result.owner.mobile, ownerId: result.owner.id, templateKey: 'registration_approved', vars: { OwnerName: result.owner.name, VehicleNumber: result.plates, ExpiryDate: `${d}/${m}/${y}`, PlanName: result.subscription.planSnapshot?.name, RenewalLink: link } });
   } catch (e) { console.error('registration_approved SMS failed', e); }
   res.json({ ok: true, ownerId: result.owner.id, subscriptionId: result.subscription.id });
 }));

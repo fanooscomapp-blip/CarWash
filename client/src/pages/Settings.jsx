@@ -106,6 +106,7 @@ export default function SettingsPage() {
       <Section title={t('settings.otp')} busy={busy.otp} onSave={() => save('otp', s.otp)}>
         <Field label={t('settings.otpLength')}><Input type="number" min="4" max="8" value={s.otp.length} onChange={(e) => upd('otp', { length: Number(e.target.value) })} /></Field>
         <Field label={t('settings.otpExpiry')}><Input type="number" min="1" max="60" value={s.otp.expiryMinutes} onChange={(e) => upd('otp', { expiryMinutes: Number(e.target.value) })} /></Field>
+        <Field label={t('settings.otpMaxPerDay')} hint={t('settings.otpMaxPerDayHint')}><Input type="number" min="1" max="50" value={s.otp.maxPerDay ?? 5} onChange={(e) => upd('otp', { maxPerDay: Number(e.target.value) })} /></Field>
         <Field label={t('settings.otpAttempts')}><Input type="number" min="1" max="20" value={s.otp.maxAttempts} onChange={(e) => upd('otp', { maxAttempts: Number(e.target.value) })} /></Field>
         <Field label={t('settings.otpCooldown')}><Input type="number" min="10" max="600" value={s.otp.resendCooldownSeconds} onChange={(e) => upd('otp', { resendCooldownSeconds: Number(e.target.value) })} /></Field>
       </Section>
@@ -146,12 +147,15 @@ export default function SettingsPage() {
 
       <Section title={t('settings.notifications')} busy={busy.notifications} onSave={() => save('notifications', s.notifications)}>
         <Field label={t('settings.reminderDays')} hint={t('settings.reminderDaysHint')}><Input dir="ltr" defaultValue={numList(s.notifications.expiryReminderDays)} onBlur={(e) => upd('notifications', { expiryReminderDays: parseList(e.target.value) })} /></Field>
+        <Field label={t('settings.reminderHour')} hint={t('settings.reminderHourHint')}><Input type="number" min="0" max="23" value={s.notifications.reminderHour ?? 10} onChange={(e) => upd('notifications', { reminderHour: Number(e.target.value) })} /></Field>
         <Field label={t('settings.postExpiry')} hint={t('settings.commaHint')}><Input dir="ltr" defaultValue={numList(s.notifications.postExpiryReminderDays)} onBlur={(e) => upd('notifications', { postExpiryReminderDays: parseList(e.target.value) })} /></Field>
         <div className="sm:col-span-2 grid sm:grid-cols-2 gap-2">
           <Toggle checked={s.notifications.sendOnExpiry} onChange={(v) => upd('notifications', { sendOnExpiry: v })} label={t('settings.sendOnExpiry')} />
           <Toggle checked={s.notifications.smsOnPaymentApproved} onChange={(v) => upd('notifications', { smsOnPaymentApproved: v })} label={t('settings.smsOnApproved')} />
           <Toggle checked={s.notifications.smsOnPaymentRejected} onChange={(v) => upd('notifications', { smsOnPaymentRejected: v })} label={t('settings.smsOnRejected')} />
           <Toggle checked={s.notifications.smsOnWashCompleted} onChange={(v) => upd('notifications', { smsOnWashCompleted: v })} label={t('settings.smsOnWash')} />
+          <Toggle checked={s.notifications.smsOnRenewalReceived !== false} onChange={(v) => upd('notifications', { smsOnRenewalReceived: v })} label={t('settings.smsOnRenewalReceived')} />
+          <Toggle checked={s.notifications.smsOnRegistrationApproved !== false} onChange={(v) => upd('notifications', { smsOnRegistrationApproved: v })} label={t('settings.smsOnRegistrationApproved')} />
           <Toggle checked={s.notifications.notifyAdminOnPendingPayment} onChange={(v) => upd('notifications', { notifyAdminOnPendingPayment: v })} label={t('settings.notifyPending')} />
           <Toggle checked={s.notifications.notifyAdminOnIssue} onChange={(v) => upd('notifications', { notifyAdminOnIssue: v })} label={t('settings.notifyIssue')} />
         </div>

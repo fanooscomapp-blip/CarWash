@@ -128,7 +128,7 @@ router.post('/renew/:token', limiter(20, 60), receiptUpload.single('receipt'), w
     try {
       const owner = await db.query.owners.findFirst({ where: eq(owners.id, sub.ownerId) });
       const plates = (await db.execute(sql`SELECT string_agg(v.plate_number, ', ') AS p FROM subscription_vehicles sv JOIN vehicles v ON v.id = sv.vehicle_id WHERE sv.subscription_id = ${sub.id}`).then((r) => (r.rows || r)[0]))?.p;
-      await sendSms(sub.companyId, { to: owner.mobile, ownerId: owner.id, templateKey: 'renewal_received', vars: { OwnerName: owner.name, VehicleNumber: plates, RenewalId: result.subscription.subscriptionCode, Amount: result.subscription.finalAmount } });
+      if ((await getSetting(sub.companyId, 'notifications')).smsOnRenewalReceived !== false) await sendSms(sub.companyId, { to: owner.mobile, ownerId: owner.id, templateKey: 'renewal_received', vars: { OwnerName: owner.name, VehicleNumber: plates, RenewalId: result.subscription.subscriptionCode, Amount: result.subscription.finalAmount } });
     } catch (e) { console.error('renewal_received SMS failed', e); }
     res.status(201).json({ requestCode: result.subscription.subscriptionCode, paymentCode: result.payment.paymentCode, status: 'pending_verification', amount: Number(result.subscription.finalAmount), startDate: result.subscription.startDate, endDate: result.subscription.endDate });
   } catch (e) { if (req.file) fs.unlink(req.file.path, () => {}); throw e; }
@@ -141,7 +141,12 @@ router.post('/otp/request', limiter(10, 15), wrap(async (req, res) => {
   const owner = await db.query.owners.findFirst({ where: inArray(owners.mobile, mobileCandidates(m)) });
   // Same response whether or not the number exists (no enumeration)
   if (!owner) return res.json({ ok: true, expiresInMinutes: 5 });
+  // Only owners who actually have a car in the system get a code (no SMS credit spent on strangers)
+  const hasCar = await db.query.vehicles.findFirst({ where: and(eq(vehicles.ownerId, owner.id), eq(vehicles.status, 'active')) });
+  if (!hasCar) return res.json({ ok: true, expiresInMinutes: 5 });
   const otp = await getSetting(owner.companyId, 'otp');
+  const sentToday = await db.$count(otpCodes, and(eq(otpCodes.ownerId, owner.id), gt(otpCodes.createdAt, new Date(Date.now() - 24 * 3600 * 1000))));
+  if (sentToday >= (otp.maxPerDay || 5)) throw new AppError(429, 'OTP_LIMIT', 'Daily code limit reached, try again tomorrow');
   const recent = await db.query.otpCodes.findFirst({ where: and(eq(otpCodes.ownerId, owner.id), gt(otpCodes.createdAt, new Date(Date.now() - otp.resendCooldownSeconds * 1000))) });
   if (recent) throw new AppError(429, 'OTP_COOLDOWN', `Please wait ${otp.resendCooldownSeconds} seconds before requesting a new code`);
   const code = String(crypto.randomInt(0, 10 ** otp.length)).padStart(otp.length, '0');

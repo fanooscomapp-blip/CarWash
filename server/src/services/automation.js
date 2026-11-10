@@ -4,6 +4,7 @@ import { db, schema } from '../db/index.js';
 import { refreshStatuses } from './subscriptionService.js';
 import { systemAudit } from '../lib/audit.js';
 import { runReminderAutomation } from './renewalLinkService.js';
+import { getSetting } from './settingsService.js';
 import { runScheduledAssignment } from './assignmentService.js';
 import { config } from '../lib/config.js';
 
@@ -22,7 +23,10 @@ export async function runDailyAutomation() {
       }
     }
     if (changed.length) await systemAudit(id, { action: 'automation.status_refresh', entityType: 'subscription', after: { changed: changed.length } });
-    await runReminderAutomation(id).catch((e) => console.error('reminder automation failed', e));
+    // Reminders go out only from the configured hour onwards (default 10:00 local), never in the middle of the night
+    const notif = await getSetting(id, 'notifications');
+    const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: config.timezone, hour: 'numeric', hour12: false }).format(new Date())) % 24;
+    if (hour >= Number(notif.reminderHour ?? 10)) await runReminderAutomation(id).catch((e) => console.error('reminder automation failed', e));
   }
 }
 
