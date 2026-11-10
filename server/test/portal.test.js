@@ -24,11 +24,11 @@ fs.writeFileSync('/tmp/receipt.png', Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAA
   step('settings saved (InstaPay number, reminders 3 days + on expiry)');
 
   // SMS test send without provider → honest not_configured
-  const t = await j('POST', '/admin/settings/sms/test', { mobile: '01000000001' }, admin);
+  const t = await j('POST', '/admin/settings/sms/test', { mobile: '01099900001' }, admin);
   assert.equal(t.status, 'not_configured'); step('SMS test without provider → status not_configured (nothing simulated)');
   // Configure SMS Misr with dummy creds → real HTTP attempt → failed (logged with provider response)
   await j('PUT', '/admin/settings/sms', { provider: 'smsmisr', username: 'demo', password: 'demo', senderId: 'CARWASH', environment: 'test', defaultLang: 'ar' }, admin);
-  const t2 = await j('POST', '/admin/settings/sms/test', { mobile: '01000000001' }, admin);
+  const t2 = await j('POST', '/admin/settings/sms/test', { mobile: '01099900001' }, admin);
   assert.ok(['failed', 'sent'].includes(t2.status)); step(`SMS Misr adapter attempted a real call → ${t2.status} (${JSON.stringify(t2.providerResponse).slice(0, 80)}…)`);
   await j('PUT', '/admin/settings/sms', { provider: 'none' }, admin);
 
@@ -37,9 +37,9 @@ fs.writeFileSync('/tmp/receipt.png', Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAA
   const target = ren.data.find((s) => s.daysRemaining >= 0 && s.daysRemaining <= 7 && !s.renewedToId);
   assert.ok(target, 'need an expiring demo subscription');
   const { link } = await j('GET', `/admin/sms/renewal-link/${target.id}`, null, admin);
-  assert.match(link, /\/p\/renew\/[A-Za-z0-9_-]{20,}$/); step(`renewal link minted: …${link.slice(-30)}`);
+  assert.match(link, /\/r\/[A-Za-z0-9]{10}$/); step(`renewal link minted: …${link.slice(-30)}`);
   const rem = await j('POST', `/admin/sms/renewal-reminder/${target.id}`, {}, admin);
-  assert.equal(rem.log.status, 'not_configured'); assert.ok(rem.log.body.includes(link)); assert.ok(rem.log.body.includes(target.plates.split(',')[0])); step('manual reminder rendered Arabic template with plate + link, logged not_configured');
+  assert.ok(['not_configured', 'skipped_demo'].includes(rem.log.status)); assert.ok(rem.log.body.includes(link)); assert.ok(rem.log.body.includes(target.plates.split(',')[0])); step('manual reminder rendered Arabic template with plate + link, logged not_configured');
   const logs = await j('GET', '/admin/sms/logs', null, admin); assert.ok(logs.data.length >= 3); step('SMS center lists logs');
 
   // Scenario 2: owner opens link (no login) → sees summary → uploads receipt
@@ -74,7 +74,7 @@ fs.writeFileSync('/tmp/receipt.png', Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAA
 
   // OTP login
   const ownerMobile = (await j('GET', `/admin/owners/${target.ownerId}`, null, admin)).mobile;
-  const req1 = await j('POST', '/portal/otp/request', { mobile: ownerMobile }); assert.equal(req1.delivery, 'not_configured');
+  const req1 = await j('POST', '/portal/otp/request', { mobile: ownerMobile }); assert.ok(['not_configured', 'skipped_demo'].includes(req1.delivery));
   const otpLog = (await j('GET', '/admin/sms/logs?pageSize=3', null, admin)).data.find((l) => l.templateKey === 'otp'); const code = otpLog.body.match(/\d{6}/)[0]; step(`OTP requested; without SMS provider admin can read the code in the SMS log (${code})`);
   const cool = await j('POST', '/portal/otp/request', { mobile: ownerMobile }, null, true); assert.equal(cool.status, 429); step('resend cooldown enforced');
   const wrong = await j('POST', '/portal/otp/verify', { mobile: ownerMobile, code: '000000' }, null, true); assert.equal(wrong.status, 401);

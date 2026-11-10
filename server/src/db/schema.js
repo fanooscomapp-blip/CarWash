@@ -122,6 +122,7 @@ export const owners = pgTable('owners', {
   email: varchar('email', { length: 200 }),
   notes: text('notes'),
   portalToken: varchar('portal_token', { length: 80 }),
+  smsBlocked: boolean('sms_blocked').default(false).notNull(), // training / test owner: never receives SMS
   isDemo: boolean('is_demo').default(false).notNull(),
   createdAt: createdAt(),
   updatedAt: updatedAt(),

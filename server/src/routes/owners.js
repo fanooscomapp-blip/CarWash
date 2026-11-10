@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { and, eq, sql, or, getTableColumns, desc } from 'drizzle-orm';
+import { and, eq, sql, or, getTableColumns, desc, inArray } from 'drizzle-orm';
 import { db, schema } from '../db/index.js';
 import { wrap, notFound } from '../lib/errors.js';
 import { requirePermission } from '../middleware/auth.js';
@@ -18,6 +18,7 @@ const ownerSchema = z.object({
   altMobile: z.string().max(30).optional().nullable().transform((s) => (s ? normalizeMobile(s) : s)),
   email: z.string().email().optional().nullable().or(z.literal('')).transform((s) => s || null),
   notes: z.string().max(5000).optional().nullable(),
+  smsBlocked: z.boolean().optional(),
 });
 
 router.get('/', requirePermission('owners.view'), wrap(async (req, res) => {
@@ -61,6 +62,14 @@ router.post('/', requirePermission('owners.manage'), wrap(async (req, res) => {
   const [row] = await db.insert(owners).values({ ...body, companyId: req.companyId }).returning();
   await audit(req, { action: 'owner.create', entityType: 'owner', entityId: row.id, after: row });
   res.status(201).json(row);
+}));
+
+// Bulk: mark every current owner as training (no SMS) or clear the flag — used before going live with real customers
+router.post('/bulk-sms-block', requirePermission('owners.manage'), wrap(async (req, res) => {
+  const { blocked, ownerIds } = z.object({ blocked: z.boolean(), ownerIds: z.array(z.string().uuid()).optional() }).parse(req.body);
+  const r = await db.update(schema.owners).set({ smsBlocked: blocked, updatedAt: new Date() }).where(ownerIds?.length ? and(eq(schema.owners.companyId, req.companyId), inArray(schema.owners.id, ownerIds)) : eq(schema.owners.companyId, req.companyId)).returning({ id: schema.owners.id });
+  await audit(req, { action: 'owners.bulk_sms_block', entityType: 'owner', after: { blocked, count: r.length } });
+  res.json({ count: r.length });
 }));
 
 router.put('/:id', requirePermission('owners.manage'), wrap(async (req, res) => {

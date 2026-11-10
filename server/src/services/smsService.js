@@ -68,9 +68,9 @@ export async function sendSms(companyId, { to, templateKey, vars = {}, body, lan
   const mobile = normalizeMobile(to);
   const [log] = await db.insert(smsLogs).values({ companyId, toMobile: mobile, ownerId, templateKey: templateKey || null, body: text, status: 'queued' }).returning();
 
-  // Demo owners (seeded sample data) never receive real messages
-  const demoOwner = await db.execute(sql`SELECT 1 FROM owners WHERE company_id = ${companyId} AND is_demo = true AND (${ownerId ? sql`id = ${ownerId} OR ` : sql``} mobile = ${mobile}) LIMIT 1`).then((r) => (r.rows || r).length > 0);
-  if (demoOwner) { const [row] = await db.update(smsLogs).set({ status: 'skipped_demo', providerResponse: { reason: 'Demo owner – no SMS sent' } }).where(eq(smsLogs.id, log.id)).returning(); return row; }
+  // Demo / training owners never receive real messages (sample data, or owners the admin marked "no SMS")
+  const blocked = await db.execute(sql`SELECT 1 FROM owners WHERE company_id = ${companyId} AND (is_demo = true OR sms_blocked = true) AND (${ownerId ? sql`id = ${ownerId} OR ` : sql``} mobile = ${mobile}) LIMIT 1`).then((r) => (r.rows || r).length > 0);
+  if (blocked) { const [row] = await db.update(smsLogs).set({ status: 'skipped_demo', providerResponse: { reason: 'Training/demo owner – no SMS sent' } }).where(eq(smsLogs.id, log.id)).returning(); return row; }
 
   if (!isConfigured(cfg)) {
     const [row] = await db.update(smsLogs).set({ status: 'not_configured', providerResponse: { reason: 'SMS provider not configured in Settings → SMS' } }).where(eq(smsLogs.id, log.id)).returning();
