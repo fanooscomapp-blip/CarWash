@@ -8,6 +8,7 @@ import { api } from '../lib/api.js';
 import { fmtDate, fmtDateTime, fmtMoney } from '../lib/format.js';
 import { PageHeader, DataTable, SearchInput, Select, StatusBadge, KpiCard, Modal, ConfirmDialog, useToast, DescriptionList, Input } from '../components/ui.jsx';
 
+const OUTSTANDING = 'pending_verification,awaiting_new_receipt';
 const STATUSES = ['pending_verification', 'approved', 'rejected', 'awaiting_new_receipt'];
 
 function PaymentDetail({ id, onClose, onChanged }) {
@@ -64,13 +65,13 @@ export default function Payments() {
     <div className="fade-in">
       <PageHeader title={t('payments.title')} />
       {data?.totals && <div className="grid grid-cols-3 gap-3 mb-5">
-        <KpiCard label={t('payments.approvedTotal')} value={fmtMoney(data.totals.approved, cur, lang)} tone="success" />
-        <KpiCard label={t('payments.outstandingTotal')} value={fmtMoney(data.totals.outstanding, cur, lang)} tone="warning" />
-        <KpiCard label={t('payments.pendingCount')} value={data.totals.pending_count} tone="warning" onClick={() => setFilter('status', 'pending_verification')} />
+        <KpiCard label={t('payments.approvedTotal')} value={fmtMoney(data.totals.approved, cur, lang)} tone="success" active={filters.status === 'approved'} onClick={() => setFilter('status', filters.status === 'approved' ? '' : 'approved')} />
+        <KpiCard label={t('payments.outstandingTotal')} value={fmtMoney(data.totals.outstanding, cur, lang)} tone="warning" active={filters.status === OUTSTANDING} onClick={() => setFilter('status', filters.status === OUTSTANDING ? '' : OUTSTANDING)} />
+        <KpiCard label={t('payments.pendingCount')} value={data.totals.pending_count} tone="warning" active={filters.status === 'pending_verification'} onClick={() => setFilter('status', filters.status === 'pending_verification' ? '' : 'pending_verification')} />
       </div>}
       <div className="flex flex-wrap gap-2 mb-4">
         <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} className="w-64" />
-        <Select value={filters.status} onChange={(e) => setFilter('status', e.target.value)} className="w-48"><option value="">{t('common.status')}: {t('common.all')}</option>{STATUSES.map((s) => <option key={s} value={s}>{t(`status.${s}`)}</option>)}</Select>
+        <Select value={filters.status} onChange={(e) => setFilter('status', e.target.value)} className="w-48"><option value="">{t('common.status')}: {t('common.all')}</option>{STATUSES.map((s) => <option key={s} value={s}>{t(`status.${s}`)}</option>)}<option value={OUTSTANDING}>{t('payments.outstandingTotal')}</option></Select>
         <Select value={filters.compoundId} onChange={(e) => setFilter('compoundId', e.target.value)} className="w-44"><option value="">{t('dashboard.allCompounds')}</option>{lookups.data?.compounds.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>
         <Select value={filters.method} onChange={(e) => setFilter('method', e.target.value)} className="w-40"><option value="">{t('payments.method')}: {t('common.all')}</option>{['bank_transfer', 'cash', 'other'].map((m) => <option key={m} value={m}>{t(`subs.methods.${m}`)}</option>)}</Select>
         <Input type="date" value={filters.dateFrom} onChange={(e) => setFilter('dateFrom', e.target.value)} className="w-40" /><Input type="date" value={filters.dateTo} onChange={(e) => setFilter('dateTo', e.target.value)} className="w-40" />

@@ -226,10 +226,11 @@ export function DataTable({ columns, rows, loading, error, onRetry, emptyTitle, 
   );
 }
 
-export function KpiCard({ label, value, hint, tone = 'default', icon: Icon, onClick }) {
+export function KpiCard({ label, value, hint, tone = 'default', icon: Icon, onClick, active = false }) {
   const tones = { default: 'text-navy-900', success: 'text-emerald-600', warning: 'text-orange-600', danger: 'text-red-600', info: 'text-brand-600' };
   return (
-    <div onClick={onClick} className={`card p-4 ${onClick ? 'cursor-pointer hover:border-brand-500/50 transition-colors' : ''}`}>
+    <div onClick={onClick} role={onClick ? 'button' : undefined} tabIndex={onClick ? 0 : undefined} onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(e); } } : undefined}
+      className={`card p-4 ${onClick ? 'cursor-pointer hover:border-brand-500/50 transition-colors' : ''} ${active ? 'ring-2 ring-brand-500 border-brand-500' : ''}`}>
       <div className="flex items-start justify-between gap-2">
         <p className="text-xs font-medium text-slate-500 leading-snug">{label}</p>
         {Icon && <Icon size={16} className="text-slate-400 shrink-0" />}
