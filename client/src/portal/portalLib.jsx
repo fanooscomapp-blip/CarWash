@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
+import { Phone, MessageCircle } from 'lucide-react';
 import { portalAr, portalEn } from '../i18n/portal.js';
 
 export const papi = axios.create({ baseURL: '/api/portal' });
@@ -42,4 +43,18 @@ export function AuthImg({ src, className, onClick }) {
   const [url, setUrl] = useState(null);
   useEffect(() => { let alive = true; let obj; papi.get(src.replace(/^\/api\/portal/, ''), { responseType: 'blob' }).then((r) => { if (!alive) return; obj = URL.createObjectURL(r.data); setUrl(obj); }).catch(() => {}); return () => { alive = false; if (obj) URL.revokeObjectURL(obj); }; }, [src]);
   return url ? <img src={url} alt="" className={className} onClick={onClick} /> : <div className={`${className} bg-slate-100 animate-pulse`} />;
+}
+
+// "Contact the administration" buttons (phone + WhatsApp) – numbers come from Settings → Owner portal
+const waNumber = (m) => { const d = String(m || '').replace(/\D/g, ''); return d.startsWith('0') ? '20' + d.slice(1) : d; };
+export function ContactAdmin({ company: c, className = '' }) {
+  const { t, company } = usePortal(); const co = c || company || {};
+  if (!co.contactPhone && !co.contactWhatsapp) return null;
+  return (
+    <div className={`flex flex-wrap items-center gap-2 ${className}`}>
+      <span className="text-xs text-slate-500 basis-full">{t('contactAdmin')}</span>
+      {co.contactPhone && <a href={`tel:${co.contactPhone}`} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"><Phone size={14} />{t('callAdmin')}</a>}
+      {co.contactWhatsapp && <a href={`https://wa.me/${waNumber(co.contactWhatsapp)}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700"><MessageCircle size={14} />WhatsApp</a>}
+    </div>
+  );
 }

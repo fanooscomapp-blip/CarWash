@@ -42,6 +42,12 @@ export async function refreshStatuses(companyId, tx = db) {
 }
 
 // Resolves the plan price for a compound / vehicle type, honouring overrides (most specific wins).
+/** Plans may be restricted to specific compounds (compoundIds); empty/null = every compound. */
+export function planAllowsCompound(plan, compoundId) {
+  const ids = Array.isArray(plan?.compoundIds) ? plan.compoundIds : [];
+  return ids.length === 0 || !compoundId || ids.includes(compoundId);
+}
+
 export async function resolvePlanPrice(planId, compoundId, vehicleType, tx = db) {
   const plan = await tx.query.subscriptionPlans.findFirst({ where: eq(subscriptionPlans.id, planId), with: { prices: true } });
   if (!plan) throw notFound('Subscription plan');
@@ -95,6 +101,7 @@ export async function createSubscription(req, input, tx) {
     const vehicleRows = await assertVehiclesEligible(companyId, input.vehicleIds, unit.id, t);
     const vehicleType = vehicleRows[0].vehicleType;
     const { plan, price: resolvedPrice } = await resolvePlanPrice(input.planId, unit.compoundId, vehicleType, t);
+    if (!planAllowsCompound(plan, unit.compoundId)) throw validationFailed('This plan is not offered in the selected compound');
     if (!plan.isActive) throw validationFailed('Subscription plan is inactive');
     if (plan.scope === 'per_vehicle' && vehicleRows.length > 1) throw validationFailed('This plan covers a single vehicle');
     if (vehicleRows.length > plan.maxVehicles) throw validationFailed(`This plan allows at most ${plan.maxVehicles} vehicle(s)`);

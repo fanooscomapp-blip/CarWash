@@ -102,6 +102,8 @@ export default function SettingsPage() {
         <Field label={t('settings.linkValidDays')}><Input type="number" min="1" max="365" value={s.portal.linkValidDays} onChange={(e) => upd('portal', { linkValidDays: Number(e.target.value) })} /></Field>
         <Field label={t('settings.sessionDays')}><Input type="number" min="1" max="365" value={s.portal.sessionDays} onChange={(e) => upd('portal', { sessionDays: Number(e.target.value) })} /></Field>
         <div className="sm:col-span-2"><Toggle checked={s.portal.selfRegistration !== false} onChange={(v) => upd('portal', { selfRegistration: v })} label={t('settings.selfRegistration')} /></div>
+        <Field label={t('settings.contactPhone')} hint={t('settings.contactHint')}><Input dir="ltr" value={s.portal.contactPhone || ''} onChange={(e) => upd('portal', { contactPhone: e.target.value })} placeholder="01xxxxxxxxx" /></Field>
+        <Field label={t('settings.contactWhatsapp')}><Input dir="ltr" value={s.portal.contactWhatsapp || ''} onChange={(e) => upd('portal', { contactWhatsapp: e.target.value })} placeholder="01xxxxxxxxx" /></Field>
         <Field label={t('settings.joinMaxPerHour')}><Input type="number" min="1" max="100" value={s.portal.joinMaxPerHour ?? 5} onChange={(e) => upd('portal', { joinMaxPerHour: Number(e.target.value) })} /></Field>
       </Section>
 

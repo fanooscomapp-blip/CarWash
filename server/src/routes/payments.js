@@ -45,7 +45,11 @@ router.get('/', requirePermission('payments.view'), wrap(async (req, res) => {
       coalesce(sum(amount) FILTER (WHERE status='approved'),0)::numeric AS approved,
       coalesce(sum(amount) FILTER (WHERE status IN ('pending_verification','awaiting_new_receipt')),0)::numeric AS outstanding,
       count(*) FILTER (WHERE status='pending_verification')::int AS pending_count
-    FROM payments WHERE company_id = ${req.companyId}`).then((r) => (r.rows || r)[0]);
+    FROM payments WHERE company_id = ${req.companyId}
+      ${compoundId ? sql`AND compound_id = ${compoundId}` : sql``}
+      ${method ? sql`AND method = ${method}` : sql``}
+      ${dateFrom ? sql`AND created_at >= ${dateFrom}::date` : sql``}
+      ${dateTo ? sql`AND created_at < (${dateTo}::date + 1)` : sql``}`).then((r) => (r.rows || r)[0]);
   res.json({ ...paged(rows, count, pg), totals });
 }));
 

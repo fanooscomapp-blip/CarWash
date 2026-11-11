@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Check, Upload, Car, AlertTriangle, Clock, FileImage, LogIn } from 'lucide-react';
-import { papi, usePortal, fmtDate, fmtMoney, Badge } from './portalLib.jsx';
+import { papi, usePortal, fmtDate, fmtMoney, Badge, ContactAdmin } from './portalLib.jsx';
 import { PortalShell, Card, BigButton, Spinner, Center } from './PortalLayout.jsx';
 import PaymentBox from './PaymentBox.jsx';
 import BodyIcon from '../components/BodyIcons.jsx';
@@ -22,7 +22,7 @@ export default function RenewPage() {
     catch (e) { setSubmitErr(e.message); } finally { setBusy(false); }
   };
 
-  if (err) return <PortalShell><Center><AlertTriangle size={40} className="text-orange-500" /><p className="font-semibold text-slate-800">{err.code === 'LINK_EXPIRED' ? t('linkExpired') : t('linkInvalid')}</p><Link to="/p/login" className="text-brand-600 underline text-sm flex items-center gap-1"><LogIn size={14} />{t('loginInstead')}</Link></Center></PortalShell>;
+  if (err) return <PortalShell><Center><AlertTriangle size={40} className="text-orange-500" /><p className="font-semibold text-slate-800">{err.code === 'LINK_EXPIRED' ? t('linkExpired') : t('linkInvalid')}</p><Link to="/p/login" className="text-brand-600 underline text-sm flex items-center gap-1"><LogIn size={14} />{t('loginInstead')}</Link><ContactAdmin className="justify-center" /></Center></PortalShell>;
   if (!data) return <PortalShell><Center><Spinner /></Center></PortalShell>;
   const req = data.request;
   const canSubmit = !req || req.payment?.status === 'awaiting_new_receipt';

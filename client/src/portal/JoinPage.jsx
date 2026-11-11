@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom';
 import { Car, Plus, Trash2, Check, Upload, FileImage, AlertTriangle, Clock, Search, LocateFixed } from 'lucide-react';
-import { papi, usePortal, fmtMoney, fmtDate } from './portalLib.jsx';
+import { papi, usePortal, fmtMoney, fmtDate, ContactAdmin } from './portalLib.jsx';
 import { PortalShell, Card, BigButton, Spinner, Center } from './PortalLayout.jsx';
 import PaymentBox from './PaymentBox.jsx';
 import BodyIcon from '../components/BodyIcons.jsx';
@@ -27,7 +27,7 @@ export default function JoinPage() {
   const [busy, setBusy] = useState(false); const [submitErr, setSubmitErr] = useState(null); const fileRef = useRef();
   useEffect(() => { papi.get('/join/config').then((r) => { setCfg(r.data); const pre = sp.get('c'); const c = r.data.compounds.find((x) => x.code === pre || x.id === pre); setCompoundId(c?.id || (r.data.compounds.length === 1 ? r.data.compounds[0].id : '')); }).catch((e) => setErr(e)); }, []); // eslint-disable-line
   const cur = cfg?.company?.currency || 'EGP';
-  const eligiblePlans = useMemo(() => (cfg?.plans || []).filter((p) => vehicles.length <= p.maxVehicles && (p.scope !== 'per_vehicle' || vehicles.length === 1)), [cfg, vehicles.length]);
+  const eligiblePlans = useMemo(() => (cfg?.plans || []).filter((p) => (!p.compoundIds?.length || !compoundId || p.compoundIds.includes(compoundId)) && vehicles.length <= p.maxVehicles && (p.scope !== 'per_vehicle' || vehicles.length === 1)), [cfg, compoundId, vehicles.length]);
   useEffect(() => { if (eligiblePlans.length && !eligiblePlans.some((p) => p.id === planId)) setPlanId(eligiblePlans[0].id); }, [eligiblePlans]); // eslint-disable-line
   const [gpsBusy, setGpsBusy] = useState(null);
   const captureGps = (key) => { if (!navigator.geolocation) return setSubmitErr(t('joinGpsUnsupported')); setGpsBusy(key); navigator.geolocation.getCurrentPosition((pos) => { setGpsBusy(null); upd(key, { gpsLat: +pos.coords.latitude.toFixed(6), gpsLng: +pos.coords.longitude.toFixed(6) }); }, () => { setGpsBusy(null); setSubmitErr(t('joinGpsDenied')); }, { enableHighAccuracy: true, timeout: 10000 }); };
@@ -47,7 +47,7 @@ export default function JoinPage() {
     } catch (e) { setSubmitErr(e.message); window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); } finally { setBusy(false); }
   };
 
-  if (err) return <PortalShell><Center><AlertTriangle size={40} className="text-orange-500" /><p className="font-semibold text-slate-800 max-w-xs">{err.code === 'JOIN_DISABLED' ? t('joinClosed') : t('error')}</p></Center></PortalShell>;
+  if (err) return <PortalShell><Center><AlertTriangle size={40} className="text-orange-500" /><p className="font-semibold text-slate-800 max-w-xs">{err.code === 'JOIN_DISABLED' ? t('joinClosed') : t('error')}</p><ContactAdmin className="justify-center" /></Center></PortalShell>;
   if (!cfg) return <PortalShell><Center><Spinner /></Center></PortalShell>;
   const colors = cfg.catalog.colors; const bodies = cfg.catalog.bodyTypes; const B = lang === 'ar' ? BODY_AR : BODY_EN;
   const Lbl = ({ children, req }) => <span className="block text-xs font-semibold text-slate-500 mb-1">{children}{req && <span className="text-red-500 ms-0.5">*</span>}</span>;
@@ -99,7 +99,7 @@ export default function JoinPage() {
           {!file ? <button type="button" onClick={() => fileRef.current.click()} className="w-full rounded-xl border-2 border-dashed border-brand-300 bg-brand-50/40 py-8 flex flex-col items-center gap-2 text-brand-700"><Upload size={28} /><span className="font-semibold">{t('uploadReceipt')}</span><span className="text-xs text-slate-500">JPG · PNG · PDF</span></button>
             : <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-3">{file.type.startsWith('image/') ? <img src={URL.createObjectURL(file)} alt="" className="h-16 w-16 rounded-lg object-cover" /> : <FileImage className="h-16 w-16 text-slate-400" />}<div className="flex-1 min-w-0 text-sm"><p className="truncate font-medium">{file.name}</p></div><button type="button" className="text-xs text-brand-600 font-semibold" onClick={() => fileRef.current.click()}>{t('changeFile')}</button></div>}
           <input className={inp} placeholder={t('note')} value={note} onChange={(e) => setNote(e.target.value)} />
-          {submitErr && <p className="text-sm text-red-600 rounded-lg bg-red-50 px-3 py-2">{submitErr}</p>}
+          {submitErr && <div className="rounded-lg bg-red-50 px-3 py-2"><p className="text-sm text-red-600">{submitErr}</p><ContactAdmin company={cfg.company} className="mt-2" /></div>}
           {!valid && <p className="text-xs text-slate-500">{t('joinRequired')}</p>}
           <BigButton disabled={!valid || busy} onClick={submit} className="bg-brand-600 text-white hover:bg-brand-500 flex items-center justify-center gap-2">{busy ? <Spinner /> : <Check size={18} />}{busy ? t('submitting') : t('joinSubmit')}</BigButton>
         </Card>

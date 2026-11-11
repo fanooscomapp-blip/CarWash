@@ -48,6 +48,18 @@ const step = (name) => console.log('✓', name);
   const wrongUnit = await api('POST', '/admin/subscriptions', { unitId: unit.id, vehicleIds: [foreignVehicle.id], planId: monthly.id }, true);
   assert.equal(wrongUnit.status, 422); step('vehicle from another unit rejected');
 
+  // Plan restricted to another compound → hidden for this compound and refused on create
+  const scoped = await api('POST', '/admin/plans', { name: `Scoped ${stamp}`, planType: 'monthly', price: 500, allowedDays: [0, 1, 2, 3, 4, 6], maxFrequencyPerWeek: 3, maxWashes: 12, scope: 'per_vehicle', compoundIds: [otherCompound.id] });
+  assert.deepEqual(scoped.compoundIds, [otherCompound.id]);
+  const visible = await api('GET', `/admin/plans?compoundId=${compound.id}`); assert.ok(!visible.some((p) => p.id === scoped.id));
+  const visibleOther = await api('GET', `/admin/plans?compoundId=${otherCompound.id}`); assert.ok(visibleOther.some((p) => p.id === scoped.id));
+  const scopedSub = await api('POST', '/admin/subscriptions', { unitId: unit.id, vehicleIds: [vehicle.id], planId: scoped.id, startDate: '2031-01-01' }, true);
+  assert.equal(scopedSub.status, 422); step('plan scoped to specific compounds: hidden elsewhere and refused on create');
+  await api('DELETE', `/admin/plans/${scoped.id}`);
+  // Payment totals follow the compound filter
+  const payAll = await api('GET', '/admin/payments'); const payOne = await api('GET', `/admin/payments?compoundId=${otherCompound.id}`);
+  assert.ok(Number(payOne.totals.approved) <= Number(payAll.totals.approved)); assert.ok(payOne.totals.pending_count <= payAll.totals.pending_count); step('payment KPI cards follow the compound filter');
+
   const approved = await api('POST', `/admin/payments/${pending.payment.id}/approve`, {});
   assert.equal(approved.subscriptionStatus, 'active'); step('payment approval activates subscription');
   const twice = await api('POST', `/admin/payments/${pending.payment.id}/approve`, {}, true);

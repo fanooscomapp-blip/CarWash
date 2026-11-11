@@ -8,7 +8,7 @@ export const SETTING_DEFAULTS = {
   bank: { bankName: '', accountName: '', accountNumber: '', iban: '', instructions: '' },
   // SMS provider. provider: none | smsmisr | generic
   sms: { provider: 'none', username: '', password: '', senderId: '', environment: 'live', apiUrl: '', apiKey: '', configured: false, defaultLang: 'ar', otpTemplate: '', otpApiUrl: '' },
-  portal: { baseUrl: '', sessionDays: 30, linkValidDays: 30, selfRegistration: true, joinMaxPerHour: 5 },
+  portal: { baseUrl: '', sessionDays: 30, linkValidDays: 30, selfRegistration: true, joinMaxPerHour: 5, contactPhone: '', contactWhatsapp: '' },
   otp: { length: 6, expiryMinutes: 5, maxAttempts: 5, resendCooldownSeconds: 60, maxPerDay: 5 },
   photos: { minBeforePhotos: 1, minAfterPhotos: 1, maxPhotoSizeMb: 8 },
   // Daily distribution: run at `assignHour` (0-23, business TZ) for the next day; fairness: even split, prefer last washer

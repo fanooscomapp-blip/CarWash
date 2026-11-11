@@ -6,7 +6,7 @@ import { wrap, notFound, validationFailed } from '../lib/errors.js';
 import { requirePermission } from '../middleware/auth.js';
 import { audit } from '../lib/audit.js';
 import { compact } from '../lib/util.js';
-import { resolvePlanPrice } from '../services/subscriptionService.js';
+import { resolvePlanPrice, planAllowsCompound } from '../services/subscriptionService.js';
 import { assertDeletable, deleteRow } from '../lib/safeDelete.js';
 
 const router = Router();
@@ -26,6 +26,7 @@ const planSchema = z.object({
   maxWashes: z.coerce.number().int().min(1),
   scope: z.enum(['per_vehicle', 'per_unit', 'multi_vehicle']),
   maxVehicles: z.coerce.number().int().min(1).optional(),
+  compoundIds: z.array(z.string().uuid()).optional().nullable(),
   description: z.string().max(2000).optional().nullable(),
   isActive: z.boolean().optional(),
   prices: z.array(priceSchema).optional(),
@@ -33,12 +34,13 @@ const planSchema = z.object({
 const customNeedsDuration = (v) => { if (v.planType === 'custom' && !v.durationDays) throw validationFailed('Duration is required for custom plans'); };
 
 router.get('/', requirePermission('plans.view', 'subscriptions.view'), wrap(async (req, res) => {
-  const { active } = req.query;
-  const rows = await db.query.subscriptionPlans.findMany({
+  const { active, compoundId } = req.query;
+  const rows0 = await db.query.subscriptionPlans.findMany({
     where: and(eq(subscriptionPlans.companyId, req.companyId), active === 'true' ? eq(subscriptionPlans.isActive, true) : undefined),
     with: { prices: { with: { compound: { columns: { id: true, name: true } } } } },
     orderBy: [subscriptionPlans.durationDays, subscriptionPlans.name],
   });
+  const rows = compoundId ? rows0.filter((p) => planAllowsCompound(p, String(compoundId))) : rows0;
   const usage = await db.execute(sql`SELECT plan_id, count(*)::int AS total, count(*) FILTER (WHERE status IN ('active','expiring_soon'))::int AS active FROM subscriptions WHERE company_id = ${req.companyId} GROUP BY plan_id`).then((r) => r.rows || r);
   res.json(rows.map((p) => ({ ...p, usage: usage.find((u) => u.plan_id === p.id) || { total: 0, active: 0 } })));
 }));

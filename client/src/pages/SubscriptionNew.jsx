@@ -39,7 +39,8 @@ export default function SubscriptionNew() {
   const washes = form.customize && form.washesAllowed ? Number(form.washesAllowed) : quote?.maxWashes ?? plan?.maxWashes ?? 0;
   const allowedDays = form.washDays || (form.customize && form.allowedDays ? form.allowedDays : quote?.allowedDays ?? plan?.allowedDays ?? []);
   const final = Math.max(0, price - Number(form.discount || 0));
-  const eligiblePlans = (plans.data || []).filter((p) => vehicleIds.length <= 1 || p.scope !== 'per_vehicle');
+  const allowsCompound = (p) => !p.compoundIds?.length || !unit?.compoundId || p.compoundIds.includes(unit.compoundId);
+  const eligiblePlans = (plans.data || []).filter((p) => allowsCompound(p) && (vehicleIds.length <= 1 || p.scope !== 'per_vehicle'));
 
   const steps = [t('subs.wizard.unit'), t('subs.wizard.vehicles'), t('subs.wizard.plan'), t('subs.wizard.payment'), t('subs.wizard.review')];
   const canNext = [!!unit, vehicleIds.length > 0, !!form.planId && (!plan || vehicleIds.length <= plan.maxVehicles), true, true][step];

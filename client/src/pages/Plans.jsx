@@ -11,15 +11,15 @@ const DEFAULT_DURATION = { weekly: 7, monthly: 30, quarterly: 90, semi_annual: 1
 
 function PlanForm({ open, onClose, initial, onSaved }) {
   const { t } = useI18n(); const toast = useToast(); const lookups = useLookups();
-  const [form, setForm] = useState(initial ? { ...initial, price: Number(initial.price), prices: (initial.prices || []).map((p) => ({ compoundId: p.compoundId || '', vehicleType: p.vehicleType || '', price: Number(p.price) })) }
-    : { name: '', nameAr: '', planType: 'monthly', durationDays: 30, price: '', allowedDays: [0, 1, 2, 3, 4, 5, 6], maxFrequencyPerWeek: 3, maxWashes: 12, scope: 'per_vehicle', maxVehicles: 1, description: '', isActive: true, prices: [] });
+  const [form, setForm] = useState(initial ? { ...initial, price: Number(initial.price), prices: (initial.prices || []).map((p) => ({ compoundId: p.compoundId || '', vehicleType: p.vehicleType || '', price: Number(p.price) })), compoundIds: initial.compoundIds || [] }
+    : { name: '', nameAr: '', planType: 'monthly', durationDays: 30, price: '', allowedDays: [0, 1, 2, 3, 4, 5, 6], maxFrequencyPerWeek: 3, maxWashes: 12, scope: 'per_vehicle', maxVehicles: 1, description: '', isActive: true, prices: [], compoundIds: [] });
   const [busy, setBusy] = useState(false); const [error, setError] = useState(null);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const setType = (e) => setForm({ ...form, planType: e.target.value, durationDays: DEFAULT_DURATION[e.target.value] });
   const submit = async (e) => {
     e.preventDefault(); setBusy(true); setError(null);
     try {
-      const payload = { name: form.name, nameAr: form.nameAr || null, planType: form.planType, durationDays: Number(form.durationDays), price: Number(form.price), allowedDays: form.allowedDays, maxFrequencyPerWeek: Number(form.maxFrequencyPerWeek), maxWashes: Number(form.maxWashes), scope: form.scope, maxVehicles: form.scope === 'per_vehicle' ? 1 : Number(form.maxVehicles || 1), description: form.description || null, isActive: form.isActive, prices: form.prices.filter((p) => p.price !== '').map((p) => ({ compoundId: p.compoundId || null, vehicleType: p.vehicleType || null, price: Number(p.price) })) };
+      const payload = { name: form.name, nameAr: form.nameAr || null, planType: form.planType, durationDays: Number(form.durationDays), price: Number(form.price), allowedDays: form.allowedDays, compoundIds: form.compoundIds || [], maxFrequencyPerWeek: Number(form.maxFrequencyPerWeek), maxWashes: Number(form.maxWashes), scope: form.scope, maxVehicles: form.scope === 'per_vehicle' ? 1 : Number(form.maxVehicles || 1), description: form.description || null, isActive: form.isActive, prices: form.prices.filter((p) => p.price !== '').map((p) => ({ compoundId: p.compoundId || null, vehicleType: p.vehicleType || null, price: Number(p.price) })) };
       const { data } = initial?.id ? await api.put(`/admin/plans/${initial.id}`, payload) : await api.post('/admin/plans', payload);
       toast.success(t('common.success')); onSaved?.(data); onClose();
     } catch (err) { setError(err.message); } finally { setBusy(false); }
@@ -38,6 +38,13 @@ function PlanForm({ open, onClose, initial, onSaved }) {
         <Field label={t('plans.scope')}><Select value={form.scope} onChange={set('scope')}>{['per_vehicle', 'per_unit', 'multi_vehicle'].map((s) => <option key={s} value={s}>{t(`plans.scopes.${s}`)}</option>)}</Select></Field>
         {form.scope !== 'per_vehicle' && <Field label={t('plans.maxVehicles')}><Input type="number" min="1" value={form.maxVehicles} onChange={set('maxVehicles')} /></Field>}
         <Field label={t('plans.allowedDays')} className="sm:col-span-2 lg:col-span-3"><DaysPicker value={form.allowedDays} onChange={(v) => setForm({ ...form, allowedDays: v })} /></Field>
+        <Field label={t('plans.compounds')} hint={t('plans.compoundsHint')} className="sm:col-span-2 lg:col-span-3">
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => setForm({ ...form, compoundIds: [] })} className={`rounded-full border px-3 py-1 text-xs ${!form.compoundIds?.length ? 'bg-navy-900 text-white border-navy-900' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}>{t('plans.allCompounds')}</button>
+            {(lookups.data?.activeCompounds || lookups.data?.compounds || []).map((c) => { const on = form.compoundIds?.includes(c.id); return (
+              <button key={c.id} type="button" onClick={() => setForm({ ...form, compoundIds: on ? form.compoundIds.filter((x) => x !== c.id) : [...(form.compoundIds || []), c.id] })} className={`rounded-full border px-3 py-1 text-xs ${on ? 'bg-teal-600 text-white border-teal-600' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}>{c.name}</button>); })}
+          </div>
+        </Field>
         <Field label={t('plans.description')} className="sm:col-span-2 lg:col-span-3"><Textarea rows={2} value={form.description || ''} onChange={set('description')} /></Field>
         <div className="sm:col-span-2 lg:col-span-3 rounded-lg border border-slate-200 p-4">
           <div className="flex items-center justify-between mb-2"><p className="text-sm font-semibold">{t('plans.overrides')}</p><button type="button" className="btn-secondary btn-sm" onClick={() => setForm({ ...form, prices: [...form.prices, { compoundId: '', vehicleType: '', price: '' }] })}><Plus size={14} />{t('plans.addOverride')}</button></div>
@@ -60,7 +67,7 @@ function PlanForm({ open, onClose, initial, onSaved }) {
 
 export default function Plans() {
   const { t, lang } = useI18n(); const { can, company } = useAuth();
-  const { data, loading, error, reload } = useQuery('/admin/plans');
+  const { data, loading, error, reload } = useQuery('/admin/plans'); const lookups = useLookups();
   const [modal, setModal] = useState(null);
   const cur = company?.currency || 'EGP'; const days = t('common.weekdays');
   if (error) return <ErrorBox error={error} onRetry={reload} />;
@@ -76,6 +83,7 @@ export default function Plans() {
                 <StatusBadge status={p.isActive ? 'active' : 'inactive'} label={p.isActive ? t('common.active') : t('common.inactive')} />
               </div>
               <p className="mt-3 text-2xl font-semibold text-navy-900">{fmtMoney(p.price, cur, lang)}</p>
+              <p className="mt-1 text-xs text-slate-500">{p.compoundIds?.length ? p.compoundIds.map((id) => lookups.data?.compounds.find((c) => c.id === id)?.name || '?').join(' · ') : t('plans.allCompounds')}</p>
               <dl className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-600">
                 <div><dt className="text-slate-400">{t('plans.maxWashes')}</dt><dd className="font-medium">{p.maxWashes}</dd></div>
                 <div><dt className="text-slate-400">{t('plans.frequency')}</dt><dd className="font-medium">{p.maxFrequencyPerWeek}</dd></div>

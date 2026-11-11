@@ -191,6 +191,7 @@ export const subscriptionPlans = pgTable('subscription_plans', {
   maxWashes: integer('max_washes').notNull(),
   scope: varchar('scope', { length: 20 }).default('per_vehicle').notNull(), // per_vehicle|per_unit|multi_vehicle
   maxVehicles: integer('max_vehicles').default(1).notNull(),
+  compoundIds: jsonb('compound_ids').$type(), // null/[] = offered in every compound; otherwise only these compound ids
   description: text('description'),
   isActive: boolean('is_active').default(true).notNull(),
   createdAt: createdAt(),

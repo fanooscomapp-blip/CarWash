@@ -39,7 +39,7 @@ export default function RenewModal({ open, onClose, subscription, onRenewed }) {
       </div>
       <div className="grid sm:grid-cols-2 gap-4">
         <Field label={t('renewals.newPlan')} required className="sm:col-span-2">
-          <Select value={form.planId} onChange={(e) => setForm({ ...form, planId: e.target.value, allowedDays: null })}>{(plans.data || []).filter((p) => p.isActive !== false || p.id === subscription.planId).map((p) => <option key={p.id} value={p.id}>{lang === 'ar' && p.nameAr ? p.nameAr : p.name} — {fmtMoney(p.price, cur, lang)} · {p.durationDays} {t('common.days')} · {p.maxWashes} {t('subs.washes').toLowerCase()}</option>)}</Select>
+          <Select value={form.planId} onChange={(e) => setForm({ ...form, planId: e.target.value, allowedDays: null })}>{(plans.data || []).filter((p) => (!p.compoundIds?.length || p.compoundIds.includes(subscription.compoundId) || p.id === subscription.planId) && (p.isActive !== false || p.id === subscription.planId)).map((p) => <option key={p.id} value={p.id}>{lang === 'ar' && p.nameAr ? p.nameAr : p.name} — {fmtMoney(p.price, cur, lang)} · {p.durationDays} {t('common.days')} · {p.maxWashes} {t('subs.washes').toLowerCase()}</option>)}</Select>
         </Field>
         <Field label={t('renewals.newStart')} hint={t('renewals.startHint')}><Input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} /></Field>
         <Field label={t('subs.discount')}><Input type="number" min="0" step="0.01" value={form.discount} onChange={(e) => setForm({ ...form, discount: e.target.value })} /></Field>

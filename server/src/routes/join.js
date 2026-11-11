@@ -16,7 +16,7 @@ import { normalizeMobile, mobileCandidates } from '../lib/mobile.js';
 import { makeUploader, storageKey } from '../lib/uploads.js';
 import { storeUpload } from '../lib/storage.js';
 import { nextCode, money } from '../lib/util.js';
-import { resolvePlanPrice } from '../services/subscriptionService.js';
+import { resolvePlanPrice, planAllowsCompound } from '../services/subscriptionService.js';
 import { notifyAdmins } from '../services/notificationService.js';
 import { systemAudit } from '../lib/audit.js';
 import { BODY_TYPES, VEHICLE_BRANDS, VEHICLE_COLORS } from '../lib/vehicleCatalog.js';
@@ -39,9 +39,9 @@ router.get('/config', wrap(async (req, res) => {
   const plans = await db.query.subscriptionPlans.findMany({ where: and(eq(subscriptionPlans.companyId, company.id), eq(subscriptionPlans.isActive, true)), with: { prices: true }, orderBy: [subscriptionPlans.durationDays] });
   const payment = await getSetting(company.id, 'payment');
   res.json({
-    company: { name: company.name, nameAr: company.nameAr, currency: company.currency, language: company.language },
+    company: { name: company.name, nameAr: company.nameAr, currency: company.currency, language: company.language, contactPhone: portal.contactPhone || '', contactWhatsapp: portal.contactWhatsapp || '' },
     compounds: cps,
-    plans: plans.map((p) => ({ id: p.id, name: p.name, nameAr: p.nameAr, planType: p.planType, durationDays: p.durationDays, maxWashes: p.maxWashes, maxFrequencyPerWeek: p.maxFrequencyPerWeek, allowedDays: p.allowedDays, scope: p.scope, maxVehicles: p.maxVehicles, price: Number(p.price), overrides: p.prices.map((o) => ({ compoundId: o.compoundId, vehicleType: o.vehicleType, price: Number(o.price) })) })),
+    plans: plans.map((p) => ({ id: p.id, name: p.name, nameAr: p.nameAr, planType: p.planType, durationDays: p.durationDays, maxWashes: p.maxWashes, maxFrequencyPerWeek: p.maxFrequencyPerWeek, allowedDays: p.allowedDays, scope: p.scope, maxVehicles: p.maxVehicles, compoundIds: p.compoundIds || [], price: Number(p.price), overrides: p.prices.map((o) => ({ compoundId: o.compoundId, vehicleType: o.vehicleType, price: Number(o.price) })) })),
     payment: { method: payment.method, instapayAddress: payment.instapayAddress, instapayName: payment.instapayName, instapayLink: payment.instapayLink, instructions: payment.instructions, instructionsAr: payment.instructionsAr },
     catalog: { brands: VEHICLE_BRANDS, bodyTypes: BODY_TYPES, colors: VEHICLE_COLORS },
   });
@@ -72,6 +72,7 @@ router.post('/', limiter, receiptUpload.single('receipt'), wrap(async (req, res)
     const plan = await db.query.subscriptionPlans.findFirst({ where: and(eq(subscriptionPlans.id, body.planId), eq(subscriptionPlans.companyId, companyId), eq(subscriptionPlans.isActive, true)) });
     if (!plan) throw notFound('Plan');
     if (body.vehicles.length > plan.maxVehicles || (plan.scope === 'per_vehicle' && body.vehicles.length > 1)) throw validationFailed('This plan does not cover that many vehicles');
+    if (!planAllowsCompound(plan, body.compoundId)) throw validationFailed('This plan is not offered in the selected compound');
 
     // Refuse what would be refused at approval time, so the applicant learns immediately
     const existingPlates = await db.select({ plateNumber: vehicles.plateNumber }).from(vehicles).where(and(eq(vehicles.companyId, companyId), inArray(vehicles.plateNumber, plates)));

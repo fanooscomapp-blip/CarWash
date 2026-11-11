@@ -19,7 +19,7 @@ import { normalizeMobile, mobileCandidates } from '../lib/mobile.js';
 import { makeUploader, storageKey } from '../lib/uploads.js';
 import { storeUpload, sendStored } from '../lib/storage.js';
 import { nextCode, today, addDays, money } from '../lib/util.js';
-import { refreshStatuses, resolvePlanPrice, createSubscription } from '../services/subscriptionService.js';
+import { refreshStatuses, resolvePlanPrice, createSubscription, planAllowsCompound } from '../services/subscriptionService.js';
 import { notifyAdmins } from '../services/notificationService.js';
 import { systemAudit } from '../lib/audit.js';
 
@@ -37,7 +37,8 @@ const fmtPlan = (p, lang) => ({ id: p.id, name: p.name, nameAr: p.nameAr, planTy
 // ───────────────────────── Public config ─────────────────────────
 router.get('/config', wrap(async (_req, res) => {
   const c = await db.query.companies.findFirst({});
-  res.json(c ? { name: c.name, nameAr: c.nameAr, currency: c.currency, language: c.language } : {});
+  const portal = c ? await getSetting(c.id, 'portal') : {};
+  res.json(c ? { name: c.name, nameAr: c.nameAr, currency: c.currency, language: c.language, contactPhone: portal.contactPhone || '', contactWhatsapp: portal.contactWhatsapp || '' } : {});
 }));
 
 // ───────────────────────── 1. Renewal by secure link ─────────────────────────
@@ -56,7 +57,7 @@ async function renewalSummary(sub, lang) {
   const vehicleRows = await db.select({ id: vehicles.id, plateNumber: vehicles.plateNumber, brand: vehicles.brand, model: vehicles.model, color: vehicles.color, vehicleType: vehicles.vehicleType })
     .from(subscriptionVehicles).innerJoin(vehicles, eq(vehicles.id, subscriptionVehicles.vehicleId)).where(eq(subscriptionVehicles.subscriptionId, fresh.id));
   const plans = await db.query.subscriptionPlans.findMany({ where: and(eq(subscriptionPlans.companyId, fresh.companyId), eq(subscriptionPlans.isActive, true)), orderBy: [subscriptionPlans.durationDays] });
-  const eligible = plans.filter((p) => vehicleRows.length <= p.maxVehicles && (p.scope !== 'per_vehicle' || vehicleRows.length === 1));
+  const eligible = plans.filter((p) => planAllowsCompound(p, fresh.compoundId) && vehicleRows.length <= p.maxVehicles && (p.scope !== 'per_vehicle' || vehicleRows.length === 1));
   const priced = [];
   for (const p of eligible) { const { price } = await resolvePlanPrice(p.id, fresh.compoundId, vehicleRows[0]?.vehicleType); priced.push({ ...fmtPlan(p, lang), price, isCurrent: p.id === fresh.planId }); }
   // Existing renewal (pending / rejected) created from this subscription
