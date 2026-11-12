@@ -3,7 +3,7 @@ import axios from 'axios';
 export const api = axios.create({ baseURL: '/api' });
 
 api.interceptors.request.use((cfg) => {
-  const token = localStorage.getItem('cw_token');
+  const token = localStorage.getItem('cw_token') || sessionStorage.getItem('cw_token');
   if (token) cfg.headers.Authorization = `Bearer ${token}`;
   return cfg;
 });
@@ -13,7 +13,7 @@ api.interceptors.response.use(
   (err) => {
     const status = err.response?.status;
     if (status === 401 && !err.config?.url?.includes('/auth/login')) {
-      localStorage.removeItem('cw_token');
+      localStorage.removeItem('cw_token'); sessionStorage.removeItem('cw_token');
       window.dispatchEvent(new Event('cw:logout'));
     }
     const payload = err.response?.data?.error;

@@ -426,6 +426,17 @@ export const smsLogs = pgTable('sms_logs', {
   createdAt: createdAt(),
 });
 
+// Admin/staff "forgot password" codes (sent by SMS to users.mobile)
+export const passwordResets = pgTable('password_resets', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  codeHash: text('code_hash').notNull(),
+  expiresAt: ts('expires_at').notNull(),
+  attempts: integer('attempts').default(0).notNull(),
+  usedAt: ts('used_at'),
+  createdAt: createdAt(),
+});
+
 export const otpCodes = pgTable('otp_codes', {
   id: uuid('id').primaryKey().defaultRandom(),
   companyId: uuid('company_id').references(() => companies.id, { onDelete: 'cascade' }).notNull(),
