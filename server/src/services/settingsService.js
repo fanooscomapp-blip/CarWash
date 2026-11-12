@@ -7,6 +7,7 @@ export const SETTING_DEFAULTS = {
   payment: { method: 'instapay', instapayAddress: '', instapayName: '', instapayLink: '', instructions: '', instructionsAr: '' },
   bank: { bankName: '', accountName: '', accountNumber: '', iban: '', instructions: '' },
   // SMS provider. provider: none | smsmisr | generic
+  email: { host: '', port: 587, secure: false, user: '', password: '', from: '', fromName: '', configured: false },
   sms: { provider: 'none', username: '', password: '', senderId: '', environment: 'live', apiUrl: '', apiKey: '', configured: false, defaultLang: 'ar', otpTemplate: '', otpApiUrl: '' },
   portal: { baseUrl: '', sessionDays: 30, linkValidDays: 30, selfRegistration: true, joinMaxPerHour: 5, contactPhone: '', contactWhatsapp: '' },
   otp: { length: 6, expiryMinutes: 5, maxAttempts: 5, resendCooldownSeconds: 60, maxPerDay: 5 },
@@ -53,5 +54,6 @@ export function maskSecrets(settings) {
   const s = structuredClone(settings);
   if (s.sms?.apiKey) s.sms.apiKey = s.sms.apiKey.length > 4 ? '••••' + s.sms.apiKey.slice(-4) : '••••';
   if (s.sms?.password) s.sms.password = '••••••••';
+  if (s.email?.password) s.email.password = '••••••••';
   return s;
 }

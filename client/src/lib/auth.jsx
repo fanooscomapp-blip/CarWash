@@ -25,11 +25,14 @@ export function AuthProvider({ children }) {
   }, []);
 
   // remember=true → 30-day token kept in localStorage; otherwise a 12h token that dies with the browser tab/session
-  const login = async (email, password, remember = false) => {
-    const { data } = await api.post('/auth/login', { email, password, remember });
+  const adopt = (data, remember = false) => {
     localStorage.removeItem('cw_token'); sessionStorage.removeItem('cw_token');
     (remember ? localStorage : sessionStorage).setItem('cw_token', data.token);
     setState({ loading: false, user: data.user, company: data.company });
+  };
+  const login = async (email, password, remember = false) => {
+    const { data } = await api.post('/auth/login', { email, password, remember });
+    adopt(data, remember);
     return data;
   };
   const logout = async () => {
@@ -42,7 +45,7 @@ export function AuthProvider({ children }) {
     return perms.includes('*') || keys.some((k) => perms.includes(k));
   }, [state.user]);
 
-  const value = useMemo(() => ({ ...state, login, logout, can, refresh: loadMe, setCompany: (company) => setState((s) => ({ ...s, company })) }), [state, can, loadMe]);
+  const value = useMemo(() => ({ ...state, login, logout, adopt, can, refresh: loadMe, setCompany: (company) => setState((s) => ({ ...s, company })) }), [state, can, loadMe]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

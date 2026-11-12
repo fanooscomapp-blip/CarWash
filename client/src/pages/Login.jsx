@@ -12,8 +12,8 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const [form, setForm] = useState({ email: '', password: '', remember: true });
-  const [mode, setMode] = useState('login'); // login | forgot | reset
-  const [fp, setFp] = useState({ code: '', newPassword: '', confirm: '', info: null });
+  const [mode, setMode] = useState('login'); // login | forgot
+  const [sent, setSent] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   if (user) return <Navigate to={location.state?.from?.pathname || '/'} replace />;
@@ -28,17 +28,10 @@ export default function Login() {
   const forgot = async (e) => {
     e.preventDefault(); setBusy(true); setError(null);
     try {
-      const { data } = await api.post('/auth/forgot', { email: form.email.trim() });
-      if (!data.sent) { setError(data.reason === 'NO_MOBILE' ? t('auth.noMobile') : data.reason === 'SMS_FAILED' ? t('auth.smsFailed') : t('auth.noAccount')); return; }
-      setFp({ code: '', newPassword: '', confirm: '', info: data }); setMode('reset');
+      const { data } = await api.post('/auth/forgot', { email: form.email.trim(), lang });
+      if (!data.sent) { setError(data.reason === 'EMAIL_NOT_CONFIGURED' ? t('auth.emailNotConfigured') : data.reason === 'EMAIL_FAILED' ? t('auth.emailFailed') : t('auth.noAccount')); return; }
+      setSent(data);
     } catch (err) { setError(err.message); } finally { setBusy(false); }
-  };
-  const reset = async (e) => {
-    e.preventDefault(); setBusy(true); setError(null);
-    try {
-      await api.post('/auth/reset', { email: form.email.trim(), code: fp.code, newPassword: fp.newPassword });
-      await login(form.email.trim(), fp.newPassword, form.remember); navigate('/', { replace: true });
-    } catch (err) { setError(err.status === 422 ? t('auth.badCode') : err.message); } finally { setBusy(false); }
   };
 
   return (
@@ -72,20 +65,17 @@ export default function Login() {
             <button className="btn-primary w-full py-2.5" disabled={busy}>{busy && <Spinner />}{busy ? t('auth.signingIn') : t('auth.signIn')}</button>
           </form>}
           {mode === 'forgot' && <form onSubmit={forgot} className="space-y-4">
-            <p className="text-sm text-slate-600">{t('auth.forgotHint')}</p>
-            <Field label={t('auth.email')}><Input type="email" autoComplete="username" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <button className="btn-primary w-full py-2.5" disabled={busy}>{busy && <Spinner />}{t('auth.sendCode')}</button>
-            <button type="button" className="btn-ghost w-full" onClick={() => { setError(null); setMode('login'); }}><ArrowLeft size={14} className="rtl:rotate-180" />{t('auth.backToLogin')}</button>
-          </form>}
-          {mode === 'reset' && <form onSubmit={reset} className="space-y-4">
-            <p className="text-sm text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2">{t('auth.codeSent', { mobile: fp.info?.maskedMobile || '', minutes: fp.info?.minutes || 10 })}</p>
-            <Field label={t('auth.code')}><Input dir="ltr" inputMode="numeric" autoComplete="one-time-code" maxLength={6} required value={fp.code} onChange={(e) => setFp({ ...fp, code: e.target.value.replace(/\D/g, '') })} className="text-center text-lg tracking-[0.4em]" /></Field>
-            <Field label={t('auth.newPassword')}><Input type="password" autoComplete="new-password" minLength={8} required value={fp.newPassword} onChange={(e) => setFp({ ...fp, newPassword: e.target.value })} /></Field>
-            <Field label={t('auth.confirmPassword')}><Input type="password" autoComplete="new-password" minLength={8} required value={fp.confirm} onChange={(e) => setFp({ ...fp, confirm: e.target.value })} /></Field>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <button className="btn-primary w-full py-2.5" disabled={busy || fp.code.length !== 6 || fp.newPassword.length < 8 || fp.newPassword !== fp.confirm}>{busy && <Spinner />}{t('auth.resetPassword')}</button>
-            <button type="button" className="btn-ghost w-full" onClick={() => { setError(null); setMode('forgot'); }}>{t('auth.resend')}</button>
+            {sent ? <>
+              <p className="text-sm text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2">{t('auth.linkSent', { email: sent.maskedEmail, minutes: sent.minutes })}</p>
+              <p className="text-xs text-slate-500">{t('auth.checkSpam')}</p>
+              <button type="submit" className="btn-secondary w-full" disabled={busy}>{busy && <Spinner />}{t('auth.resend')}</button>
+            </> : <>
+              <p className="text-sm text-slate-600">{t('auth.forgotHint')}</p>
+              <Field label={t('auth.email')}><Input type="email" autoComplete="username" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
+              {error && <p className="text-sm text-red-600">{error}</p>}
+              <button className="btn-primary w-full py-2.5" disabled={busy}>{busy && <Spinner />}{t('auth.sendLink')}</button>
+            </>}
+            <button type="button" className="btn-ghost w-full" onClick={() => { setError(null); setSent(null); setMode('login'); }}><ArrowLeft size={14} className="rtl:rotate-180" />{t('auth.backToLogin')}</button>
           </form>}
         </div>
       </div>

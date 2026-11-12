@@ -23,7 +23,9 @@ export default function SettingsPage() {
   const { data, loading, error, reload } = useQuery('/admin/settings');
   const [s, setS] = useState(null); const [company, setCompanyForm] = useState(null); const [busy, setBusy] = useState({});
   const [pw, setPw] = useState({ currentPassword: '', newPassword: '' });
-  const [testMobile, setTestMobile] = useState(''); const [testBusy, setTestBusy] = useState(false); const [testResult, setTestResult] = useState(null);
+  const [testMobile, setTestMobile] = useState('');
+  const [testEmail, setTestEmail] = useState(''); const [emailBusy, setEmailBusy] = useState(false); const [emailResult, setEmailResult] = useState(null);
+  const sendTestEmail = async () => { setEmailBusy(true); setEmailResult(null); try { const { data: d } = await api.post('/admin/settings/email/test', { to: testEmail }); setEmailResult(d); } catch (e) { setEmailResult({ ok: false, error: e.message }); } finally { setEmailBusy(false); } }; const [testBusy, setTestBusy] = useState(false); const [testResult, setTestResult] = useState(null);
   const sendTest = async (otp = false) => { setTestBusy(true); setTestResult(null); try { const { data: d } = await api.post('/admin/settings/sms/test', { mobile: testMobile, otp }); setTestResult(d); } catch (e) { toast.error(e.message); } finally { setTestBusy(false); } };
   useEffect(() => { if (data) { setS(data.settings); setCompanyForm(data.company); } }, [data]);
   if (error) return <ErrorBox error={error} onRetry={reload} />;
@@ -72,6 +74,24 @@ export default function SettingsPage() {
         </>}
       </Section>
 
+      <Section title={t('settings.email')} busy={busy.email} onSave={() => save('email', { host: s.email.host, port: s.email.port, secure: s.email.secure, user: s.email.user, password: s.email.password, from: s.email.from, fromName: s.email.fromName }, (d) => upd('email', d))}>
+        <div className={`sm:col-span-2 flex items-start gap-2 rounded-lg px-3 py-2 text-sm ${s.email.configured ? 'bg-emerald-50 text-emerald-700' : 'bg-orange-50 text-orange-700'}`}>{s.email.configured ? t('settings.emailConfigured') : t('settings.emailNotConfigured')}</div>
+        <p className="sm:col-span-2 text-xs text-slate-500">{t('settings.emailHint')}</p>
+        <Field label={t('settings.smtpHost')}><Input dir="ltr" value={s.email.host} onChange={(e) => upd('email', { host: e.target.value })} placeholder="smtp.gmail.com" /></Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label={t('settings.smtpPort')}><Input dir="ltr" type="number" value={s.email.port} onChange={(e) => upd('email', { port: Number(e.target.value) })} /></Field>
+          <Field label={t('settings.smtpSecure')}><label className="inline-flex items-center gap-2 mt-2 text-sm"><input type="checkbox" className="h-4 w-4" checked={!!s.email.secure} onChange={(e) => upd('email', { secure: e.target.checked, port: e.target.checked ? 465 : 587 })} />SSL</label></Field>
+        </div>
+        <Field label={t('settings.smtpUser')}><Input dir="ltr" autoComplete="off" value={s.email.user} onChange={(e) => upd('email', { user: e.target.value })} /></Field>
+        <Field label={t('settings.smtpPassword')}><Input dir="ltr" type="password" autoComplete="new-password" value={s.email.password} onChange={(e) => upd('email', { password: e.target.value })} /></Field>
+        <Field label={t('settings.fromEmail')}><Input dir="ltr" type="email" value={s.email.from} onChange={(e) => upd('email', { from: e.target.value })} placeholder="noreply@yourdomain.com" /></Field>
+        <Field label={t('settings.fromName')}><Input value={s.email.fromName} onChange={(e) => upd('email', { fromName: e.target.value })} /></Field>
+        <div className="sm:col-span-2 flex flex-wrap items-end gap-2 border-t border-slate-100 pt-3">
+          <Field label={t('settings.emailTestTo')}><Input dir="ltr" type="email" value={testEmail} onChange={(e) => setTestEmail(e.target.value)} className="w-64" /></Field>
+          <button type="button" className="btn-secondary" disabled={!testEmail || emailBusy || !s.email.configured} onClick={sendTestEmail}>{emailBusy ? <Spinner /> : <Send size={14} />}{t('settings.emailTest')}</button>
+          {emailResult && <span className={`text-sm ${emailResult.ok ? 'text-emerald-700' : 'text-red-600'}`}>{emailResult.ok ? '✓ ' + t('settings.emailSent') : '✗ ' + (emailResult.error || '')}</span>}
+        </div>
+      </Section>
       <Section title={t('settings.sms')} busy={busy.sms} onSave={() => save('sms', { provider: s.sms.provider, username: s.sms.username, password: s.sms.password, senderId: s.sms.senderId, environment: s.sms.environment, apiUrl: s.sms.apiUrl, apiKey: s.sms.apiKey, defaultLang: s.sms.defaultLang, otpTemplate: s.sms.otpTemplate || '' }, (d) => upd('sms', d))}>
         <div className={`sm:col-span-2 flex items-start gap-2 rounded-lg px-3 py-2 text-sm ${s.sms.configured ? 'bg-emerald-50 text-emerald-700' : 'bg-orange-50 text-orange-700'}`}>{s.sms.configured ? <CheckCircle2 size={16} className="mt-0.5" /> : <AlertTriangle size={16} className="mt-0.5" />}{s.sms.configured ? t('settings.smsConfigured') : t('settings.smsNotConfigured')}</div>
         <Field label={t('settings.smsProvider')}><Select value={s.sms.provider} onChange={(e) => upd('sms', { provider: e.target.value })}><option value="none">{t('common.none')}</option><option value="smsmisr">SMS Misr</option><option value="generic">{t('settings.smsGeneric')}</option></Select></Field>

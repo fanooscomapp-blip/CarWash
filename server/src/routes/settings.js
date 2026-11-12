@@ -8,6 +8,7 @@ import { audit } from '../lib/audit.js';
 import { getAllSettings, getSetting, setSetting, maskSecrets, SETTING_DEFAULTS } from '../services/settingsService.js';
 import { compact } from '../lib/util.js';
 import { isConfigured, sendSms } from '../services/smsService.js';
+import { sendEmail, verifyEmail, emailConfigured } from '../services/emailService.js';
 import { normalizeMobile } from '../lib/mobile.js';
 import { DEFAULT_TEMPLATES } from '../db/seed.js';
 
@@ -36,6 +37,7 @@ const sectionSchemas = {
   general: z.object({ expiringSoonDays: z.coerce.number().int().min(1).max(90), defaultWashingDays: z.array(z.number().int().min(0).max(6)).min(1), weekStartsOn: z.number().int().min(0).max(6), dayStartHour: z.coerce.number().int().min(0).max(12).optional().default(6) }),
   bank: z.object({ bankName: z.string().max(200), accountName: z.string().max(200), accountNumber: z.string().max(60), iban: z.string().max(60), instructions: z.string().max(2000) }),
   payment: z.object({ method: z.enum(['instapay', 'bank', 'cash_only']), instapayAddress: z.string().max(120), instapayName: z.string().max(120), instapayLink: z.string().max(300).optional().default(''), instructions: z.string().max(1000), instructionsAr: z.string().max(1000) }),
+  email: z.object({ host: z.string().max(200).optional().default(''), port: z.coerce.number().int().min(1).max(65535).optional().default(587), secure: z.boolean().optional().default(false), user: z.string().max(200).optional().default(''), password: z.string().max(500).optional().default(''), from: z.string().max(200).optional().default(''), fromName: z.string().max(200).optional().default('') }),
   sms: z.object({ provider: z.enum(['none', 'smsmisr', 'generic']), username: z.string().max(200).optional().default(''), password: z.string().max(200).optional().default(''), senderId: z.string().max(200).optional().default(''), environment: z.enum(['live', 'test']).optional().default('live'), apiUrl: z.string().max(500).optional().default(''), apiKey: z.string().max(500).optional().default(''), defaultLang: z.enum(['ar', 'en']).optional().default('ar'), otpTemplate: z.string().max(200).optional().default(''), otpApiUrl: z.string().max(500).optional().default('') }),
   portal: z.object({ baseUrl: z.string().max(300), sessionDays: z.coerce.number().int().min(1).max(365), linkValidDays: z.coerce.number().int().min(1).max(365), selfRegistration: z.boolean().optional().default(true), joinMaxPerHour: z.coerce.number().int().min(1).max(100).optional().default(5), contactPhone: z.string().max(30).optional().default(''), contactWhatsapp: z.string().max(30).optional().default('') }),
   otp: z.object({ length: z.coerce.number().int().min(4).max(8), expiryMinutes: z.coerce.number().int().min(1).max(60), maxAttempts: z.coerce.number().int().min(1).max(20), resendCooldownSeconds: z.coerce.number().int().min(10).max(600), maxPerDay: z.coerce.number().int().min(1).max(50).optional().default(5) }),
@@ -83,6 +85,16 @@ router.post('/sms-templates/:id/reset', requirePermission('sms.send', 'settings.
   res.json(row);
 }));
 
+// Send a real test email through the configured SMTP server
+router.post('/email/test', requirePermission('settings.manage'), wrap(async (req, res) => {
+  const { to } = z.object({ to: z.string().email() }).parse(req.body);
+  const cfg = await getSetting(req.companyId, 'email');
+  const v = await verifyEmail(cfg);
+  if (!v.ok) return res.json({ ok: false, error: v.error });
+  const r = await sendEmail(req.companyId, { to, subject: 'Car Wash Management — test email', text: 'SMTP is configured correctly. / إعدادات البريد تعمل بشكل صحيح.' });
+  res.json(r);
+}));
+
 router.put('/:section', requirePermission('settings.manage'), wrap(async (req, res) => {
   const section = req.params.section;
   const sch = sectionSchemas[section];
@@ -94,6 +106,10 @@ router.put('/:section', requirePermission('settings.manage'), wrap(async (req, r
     if (value.apiKey?.startsWith('••••')) value.apiKey = before.apiKey;
     if (value.password?.startsWith('••••')) value.password = before.password;
     value.configured = isConfigured(value);
+  }
+  if (section === 'email') {
+    if (value.password?.startsWith('••••')) value.password = before.password;
+    value.configured = emailConfigured(value);
   }
   if (section === 'portal' && value.baseUrl) value.baseUrl = value.baseUrl.replace(/\/$/, '');
   await setSetting(req.companyId, section, value);

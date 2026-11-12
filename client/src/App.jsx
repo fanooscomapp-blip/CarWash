@@ -4,6 +4,7 @@ import { useT } from './lib/i18n.jsx';
 import Layout from './components/Layout.jsx';
 import { Spinner, Empty } from './components/ui.jsx';
 import Login from './pages/Login.jsx';
+import ResetPassword from './pages/ResetPassword.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Register from './pages/Register.jsx';
 import Compounds from './pages/Compounds.jsx';
@@ -54,6 +55,7 @@ export default function App() {
       <Route path="/s/*" element={<StaffApp />} />
       <Route path="/r/:token" element={<ShortRenew />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/reset-password/:token" element={<ResetPassword />} />
       <Route element={<Protected><Layout /></Protected>}>
         <Route index element={<Dashboard />} />
         <Route path="register" element={<Register />} />
